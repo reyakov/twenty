@@ -227,8 +227,10 @@ export class BillingSubscriptionService {
     return Object.values(BillingEntitlementKey).map((key) => ({
       key,
       value:
-        hasValidEnterprisePlan &&
-        (!isBillingEnabled || (entitlementsByKey[key]?.value ?? false)),
+        key === BillingEntitlementKey.RLS
+          ? true
+          : hasValidEnterprisePlan &&
+            (!isBillingEnabled || (entitlementsByKey[key]?.value ?? false)),
     }));
   }
 

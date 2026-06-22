@@ -21,11 +21,7 @@ import {
 import { Button } from 'twenty-ui/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 import { useQuery } from '@apollo/client/react';
-import {
-  type BillingEntitlement,
-  BillingEntitlementKey,
-  FindOneAgentDocument,
-} from '~/generated-metadata/graphql';
+import { FindOneAgentDocument } from '~/generated-metadata/graphql';
 
 type SettingsRolePermissionsObjectLevelObjectFormProps = {
   roleId: string;
@@ -55,15 +51,6 @@ export const SettingsRolePermissionsObjectLevelObjectForm = ({
   const objectMetadata = useObjectMetadataItemById({
     objectId: objectMetadataId,
   });
-
-  const workspaceBillingEntitlements = currentWorkspace?.billingEntitlements;
-
-  const isRLSBillingEntitlementEnabled =
-    workspaceBillingEntitlements?.some(
-      (entitlement: BillingEntitlement) =>
-        entitlement.key === BillingEntitlementKey.RLS &&
-        entitlement.value === true,
-    ) ?? false;
 
   const objectMetadataItem = objectMetadata.objectMetadataItem;
 
@@ -181,7 +168,7 @@ export const SettingsRolePermissionsObjectLevelObjectForm = ({
         <SettingsRolePermissionsObjectLevelRecordLevelSection
           objectMetadataItem={objectMetadataItem}
           roleId={roleId}
-          hasOrganizationPlan={isRLSBillingEntitlementEnabled}
+          hasOrganizationPlan={true}
         />
       </SettingsPageContainer>
     </SettingsPageLayout>
