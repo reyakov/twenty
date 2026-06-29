@@ -270,6 +270,10 @@ export class BillingSubscriptionService {
       };
     }
 
+    await this.stripeCustomerService.ensureDefaultPaymentMethod(
+      billingSubscription.stripeCustomerId,
+    );
+
     const updatedSubscription =
       await this.stripeSubscriptionService.updateSubscription(
         billingSubscription.stripeSubscriptionId,

@@ -13,6 +13,7 @@ import {
   type UIMessage,
   type UITools,
 } from 'ai';
+import { type APP_LOCALES } from 'twenty-shared/translations';
 import { AppPath } from 'twenty-shared/types';
 import { getAppPath, isDefined } from 'twenty-shared/utils';
 
@@ -125,6 +126,8 @@ export class ChatExecutionService {
         workspace.id,
       );
 
+    const locale = userContext.locale as keyof typeof APP_LOCALES;
+
     const toolContext = {
       workspaceId: workspace.id,
       roleId,
@@ -132,13 +135,14 @@ export class ChatExecutionService {
       userId,
       userWorkspaceId,
       threadId,
+      locale,
       onCodeExecutionUpdate,
     };
 
     const toolCatalog = await this.toolRegistry.buildToolIndex(
       workspace.id,
       roleId,
-      { userId, userWorkspaceId },
+      { userId, userWorkspaceId, locale },
     );
 
     const skillCatalog = await this.skillService.findAllFlatSkills(
@@ -152,7 +156,7 @@ export class ChatExecutionService {
     const preloadedTools = await this.toolRegistry.getToolsByName(
       AI_CHAT_TOOL_NAMES_TO_PRELOAD,
       toolContext,
-      { compactOutput: true },
+      { compactOutput: true, spillLargeOutput: true },
     );
 
     const resolvedModelId = modelId ?? workspace.smartModel;
@@ -204,7 +208,7 @@ export class ChatExecutionService {
       [EXECUTE_TOOL_TOOL_NAME]: createExecuteToolTool(
         this.toolRegistry,
         toolContext,
-        { compactOutput: true },
+        { compactOutput: true, spillLargeOutput: true },
       ),
       [LOAD_SKILL_TOOL_NAME]: createLoadSkillTool(
         (skillNames) =>
