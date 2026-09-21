@@ -46,6 +46,9 @@ SKIP_VOLUME_BACKUP=${SKIP_VOLUME_BACKUP:-0}
 HEALTH_TIMEOUT=${HEALTH_TIMEOUT:-600}
 
 LOCAL_STORAGE_DEST=/app/packages/twenty-server/.local-storage
+# Password for the throwaway Postgres the restore drill starts. Not a secret: that
+# container publishes no port and is removed when the drill ends.
+SCRATCH_PASSWORD=restore-drill
 # Counted before the patch and again after it. The two rowLevelPermission* tables
 # are the point: the removed billing-sync cleanup used to wipe them.
 CORE_TABLES="workspace user rowLevelPermissionPredicate rowLevelPermissionPredicateGroup billingEntitlement"
@@ -274,15 +277,44 @@ service_image_id() {
 }
 
 db_counts() {
-  local container=$1 table count
+  # $2 carries extra `docker exec` flags, used to reach the scratch container over
+  # TCP with a password instead of through the socket.
+  local container=$1 exec_flags=${2:-} table count
   for table in $CORE_TABLES; do
-    count=$(docker exec "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
+    count=$(docker exec $exec_flags "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
       "SELECT count(*) FROM core.\"$table\"" 2>/dev/null) || count=unavailable
     printf '%s=%s\n' "$table" "${count:-unavailable}"
   done
-  count=$(docker exec "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
-    'SELECT pg_database_size(current_database())' 2>/dev/null) || count=unavailable
-  printf 'db_size_bytes=%s\n' "${count:-unavailable}"
+}
+
+# Reported but never compared: a fresh restore is usually smaller than a live
+# database, so treating the two sizes as equal would always look like a mismatch.
+db_size_bytes() {
+  local container=$1 exec_flags=${2:-} size
+  size=$(docker exec $exec_flags "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
+    'SELECT pg_database_size(current_database())' 2>/dev/null) || size=unavailable
+  printf '%s' "${size:-unavailable}"
+}
+
+# The postgres entrypoint starts a temporary server on the unix socket only
+# (listen_addresses='') while it initialises the cluster, then shuts it down and
+# starts the real one. A socket check therefore passes during that window and races
+# against the restart; a TCP answer is the first one that proves the real server is
+# up, because the temporary one never listens on TCP.
+wait_for_scratch_db() {
+  local container=$1 i=0
+  while [ "$i" -lt 120 ]; do
+    if docker exec "$container" pg_isready -h 127.0.0.1 -p 5432 -q >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+    i=$((i + 1))
+  done
+  return 1
+}
+
+scratch_connect_flags() {
+  printf -- '-e PGHOST=127.0.0.1 -e PGPORT=5432 -e PGPASSWORD=%s' "$SCRATCH_PASSWORD"
 }
 
 wait_for_health() {
@@ -399,6 +431,7 @@ run_backup() {
     printf 'previous_worker_image=%s\n' "$(service_image_ref "$WORKER_CID")"
     printf 'db_image=%s\n' "$DB_IMAGE"
     printf 'pg_database=%s\n' "$PG_DB"
+    printf 'db_size_bytes=%s\n' "$(db_size_bytes "$DB_CID")"
     printf 'local_storage=%s\n' "${LOCAL_STORAGE_VOLUME:-none}"
   } >"$BACKUP_DIR/manifest.txt"
   cp "$BACKUP_DIR/manifest.txt" "$BACKUP_ROOT/last-manifest.txt"
@@ -421,39 +454,45 @@ run_restore_drill() {
 
   SCRATCH_CONTAINER="twenty-restore-drill-$$"
   docker run -d --rm --name "$SCRATCH_CONTAINER" \
-    -e POSTGRES_USER="$PG_USER" -e POSTGRES_PASSWORD=restore-drill -e POSTGRES_DB="$PG_DB" \
+    -e POSTGRES_USER="$PG_USER" -e POSTGRES_PASSWORD="$SCRATCH_PASSWORD" -e POSTGRES_DB="$PG_DB" \
     "$DB_IMAGE" >/dev/null || die "could not start the scratch Postgres container"
 
-  local waited=0
-  while [ "$waited" -lt 60 ]; do
-    if docker exec "$SCRATCH_CONTAINER" pg_isready -U "$PG_USER" -q >/dev/null 2>&1; then
-      break
-    fi
-    sleep 1
-    waited=$((waited + 1))
-  done
-  [ "$waited" -lt 60 ] || die "the scratch Postgres container never became ready"
+  if ! wait_for_scratch_db "$SCRATCH_CONTAINER"; then
+    warn "the scratch Postgres never accepted TCP connections, so the drill did not run"
+    warn "the dump was still validated as a readable archive; restore it by hand to be sure"
+    docker rm -f "$SCRATCH_CONTAINER" >/dev/null 2>&1 || true
+    SCRATCH_CONTAINER=
+    return 0
+  fi
 
+  local restored=0
   # No --exit-on-error: a dumped database can legitimately trip on an orphaned
   # foreign key that already exists in production, and that is not a reason to
   # withhold a patch. The row counts below are what decide whether the restore is
   # actually complete.
-  if docker exec -i "$SCRATCH_CONTAINER" pg_restore -U "$PG_USER" -d "$PG_DB" \
-    --no-owner --no-privileges <"$dump_path" >"$log_file" 2>&1; then
+  if docker exec -i $(scratch_connect_flags) "$SCRATCH_CONTAINER" pg_restore \
+    -U "$PG_USER" -d "$PG_DB" --no-owner --no-privileges <"$dump_path" >"$log_file" 2>&1; then
     ok "dump restores cleanly into an empty Postgres"
+    restored=1
   else
     warn "pg_restore reported errors; see $log_file"
     tail -n 15 "$log_file" | sed 's/^/       /'
   fi
 
-  db_counts "$SCRATCH_CONTAINER" >"$BACKUP_DIR/counts-restored.txt"
-  if diff -u "$BACKUP_DIR/counts-before.txt" "$BACKUP_DIR/counts-restored.txt" \
+  db_counts "$SCRATCH_CONTAINER" "$(scratch_connect_flags)" >"$BACKUP_DIR/counts-restored.txt"
+
+  if [ "$restored" != "1" ]; then
+    warn "the drill did not finish, so the backup is verified only as a readable archive"
+    warn "whatever the drill did read back is in counts-restored.txt"
+  elif grep -q '=unavailable' "$BACKUP_DIR/counts-restored.txt"; then
+    warn "row counts could not be read from the restored database; see counts-restored.txt"
+  elif diff -u "$BACKUP_DIR/counts-before.txt" "$BACKUP_DIR/counts-restored.txt" \
     >"$BACKUP_DIR/counts-restored.diff"; then
-    ok "restored row counts match the live database"
+    ok "restored row counts match the live database: the backup is verified"
   else
     warn "restored counts differ from the live database (see counts-restored.diff):"
     sed 's/^/       /' "$BACKUP_DIR/counts-restored.diff"
-    warn "a few rows of drift is normal on a busy instance; a large gap is not"
+    warn "rows written between the dump and the count explain a small gap; a large one does not"
   fi
 
   docker rm -f "$SCRATCH_CONTAINER" >/dev/null 2>&1 || true
@@ -697,6 +736,7 @@ run_validate() {
     warn "no pre-patch counts found; run the backup command first to enable this check"
   fi
 
+  info "database size: $(db_size_bytes "$DB_CID") bytes"
   info "recent server log (the upgrade output lives here)"
   compose logs --tail=20 server || true
 
