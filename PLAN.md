@@ -315,11 +315,35 @@ to the repository the running server container already uses, so switching `TAG` 
 not on the host, recreates `server` + `worker`, and prints the dump-restore procedure. The database is
 not touched by a patch, so no data rollback is normally needed.
 
+## Prerequisites and limits
+
+- **`--mode=build` needs network egress from the build container** to the npm registry: the image build
+  runs `yarn workspaces focus`. On an air-gapped host, pre-build elsewhere and either push the image or
+  copy it over.
+- **The in-image front-end build uses an 8GB heap** (`NODE_OPTIONS=--max-old-space-size=8192` in
+  `packages/twenty-docker/twenty/Dockerfile`), so a small self-hosted box can OOM. The script warns when
+  `/proc/meminfo` reports under 8GB. Workaround: run `npx nx build twenty-front` on a bigger machine and
+  place the output at `packages/twenty-front/build` in the checkout; the Dockerfile explicitly uses it
+  when it is already there, skipping the heavy step.
+- **Local storage is archived per mount shape**: named volume (helper container), bind mount (host
+  `tar`), or neither (S3, skipped with a warning). The manifest records `local_storage=` as the volume
+  name, `bind:<path>`, or `none`.
+- Compose prints `WARN The "FALLBACK_ENCRYPTION_KEY" variable is not set` on every call when the
+  deployment `.env` omits it. That is a warning about the compose file's own reference, and the empty
+  value it defaults to is what the instance already runs with; adding `FALLBACK_ENCRYPTION_KEY=` to
+  `.env` silences it.
+
 ## Status
 
 - Implemented and verified by running the full `all`, `patch`, `rollback` and failure paths against a
   stand-in for the `docker`/`curl` CLI, which asserted the calls issued as well as the output: only
-  `docker compose up -d server worker` is ever run, `down` never appears, the `.env` mode is preserved
-  and only `TAG` changes, and a still-gated image makes `validate` exit non-zero.
+  `docker compose up -d server worker` is ever run, `down`/`stop`/`restart` never appear, the `.env`
+  mode is preserved and only `TAG` changes, and a still-gated image makes `validate` exit non-zero.
+- The stand-in now validates the CLI surface it is handed, including flags. The first version did not,
+  which is how `docker exec -T` reached a real host: `-T` is a `docker compose exec` flag, `docker
+  exec` has no such flag and rejects it. Every `docker exec` call is now the plain form (or `-i` when
+  it reads stdin), and `docker compose exec -T` keeps `-T`.
+- Also verified against the stand-in: all three local-storage mount shapes, and the bind-mount path
+  really producing a tar of the directory.
 - Not yet run against a real Docker daemon, and never against the production instance. The first real
   run should be `backup` alone, then the by-hand UI checklist after `all`.

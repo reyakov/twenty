@@ -206,6 +206,22 @@ preflight() {
     PATCH_TAG="patch-$sha-$(date +%Y%m%d-%H%M%S)"
   fi
 
+  # The image build runs the front-end build with an 8GB heap, which a small
+  # self-hosted box will not survive. Better to say so now than 10 minutes in.
+  if [ "$PATCH_MODE" = "build" ] && [ "$SKIP_BUILD" != "1" ] && [ -r /proc/meminfo ]; then
+    local mem_gb
+    mem_gb=$(awk '/^MemTotal:/ {printf "%d", $2/1024/1024}' /proc/meminfo)
+    case "$mem_gb" in
+      '' | *[!0-9]*) ;;
+      *)
+        if [ "$mem_gb" -lt 8 ]; then
+          warn "this host reports ${mem_gb}GB RAM; the in-image front-end build uses an 8GB heap"
+          warn "pre-build packages/twenty-front/build on a bigger machine, or expect the build to OOM"
+        fi
+        ;;
+    esac
+  fi
+
   info "compose dir:  $COMPOSE_DIR"
   info "database:     $PG_DB (user $PG_USER, image $DB_IMAGE)"
   info "image repo:   $PATCH_IMAGE_REPO"
@@ -260,11 +276,11 @@ service_image_id() {
 db_counts() {
   local container=$1 table count
   for table in $CORE_TABLES; do
-    count=$(docker exec -T "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
+    count=$(docker exec "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
       "SELECT count(*) FROM core.\"$table\"" 2>/dev/null) || count=unavailable
     printf '%s=%s\n' "$table" "${count:-unavailable}"
   done
-  count=$(docker exec -T "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
+  count=$(docker exec "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
     'SELECT pg_database_size(current_database())' 2>/dev/null) || count=unavailable
   printf 'db_size_bytes=%s\n' "${count:-unavailable}"
 }
@@ -307,13 +323,15 @@ run_backup() {
   local dump_path="$BACKUP_DIR/database.dump"
 
   info "dumping database $PG_DB (custom format)"
-  docker exec -T "$DB_CID" pg_dump -U "$PG_USER" -d "$PG_DB" \
+  # No -T here: that flag is compose-only. `docker exec` allocates no TTY unless
+  # asked with -t, which is exactly what these non-interactive calls want.
+  docker exec "$DB_CID" pg_dump -U "$PG_USER" -d "$PG_DB" \
     --format=custom --no-owner --no-privileges -f "$dump_in_container"
   docker cp "$DB_CID:$dump_in_container" "$dump_path"
-  docker exec -T "$DB_CID" rm -f "$dump_in_container"
+  docker exec "$DB_CID" rm -f "$dump_in_container"
 
   info "dumping roles"
-  docker exec -T "$DB_CID" pg_dumpall -U "$PG_USER" --globals-only >"$BACKUP_DIR/globals.sql"
+  docker exec "$DB_CID" pg_dumpall -U "$PG_USER" --globals-only >"$BACKUP_DIR/globals.sql"
 
   # Reading the archive back through pg_restore is what proves the dump is usable,
   # so a truncated or unreadable file stops the run here and not months later.
@@ -337,22 +355,38 @@ run_backup() {
   done
   ok "configuration copied (it holds ENCRYPTION_KEY: treat it as secret as the .env)"
 
+  # The local storage can be a named volume or a bind mount, and the two need
+  # different archiving, so both the name and the host path are read out.
+  local mount_info mount_name mount_source
   if [ -n "$SERVER_CID" ]; then
-    LOCAL_STORAGE_VOLUME=$(docker inspect -f \
-      "{{range .Mounts}}{{if eq .Destination \"$LOCAL_STORAGE_DEST\"}}{{.Name}}{{end}}{{end}}" \
-      "$SERVER_CID")
+    mount_info=$(docker inspect -f \
+      "{{range .Mounts}}{{if eq .Destination \"$LOCAL_STORAGE_DEST\"}}{{.Type}}|{{.Name}}|{{.Source}}{{end}}{{end}}" \
+      "$SERVER_CID" 2>/dev/null || true)
+    mount_name=$(printf '%s' "$mount_info" | cut -d'|' -f2)
+    mount_source=$(printf '%s' "$mount_info" | cut -d'|' -f3)
   fi
 
   if [ "$SKIP_VOLUME_BACKUP" = "1" ]; then
     info "skipping local-storage archive (SKIP_VOLUME_BACKUP=1)"
-  elif [ -z "$LOCAL_STORAGE_VOLUME" ]; then
-    warn "no volume mounted at $LOCAL_STORAGE_DEST; skipping local-storage archive (S3 storage?)"
-  else
+  elif [ -n "$mount_name" ]; then
+    LOCAL_STORAGE_VOLUME=$mount_name
     info "archiving volume $LOCAL_STORAGE_VOLUME (uploaded files)"
     # Reuse the already-pulled db image so archiving needs no network access.
     docker run --rm -v "$LOCAL_STORAGE_VOLUME":/data:ro -v "$BACKUP_DIR":/backup \
       "$DB_IMAGE" tar czf /backup/server-local-data.tar.gz -C /data .
     ok "local storage archived ($(wc -c <"$BACKUP_DIR/server-local-data.tar.gz" | tr -d ' ') bytes)"
+  elif [ -n "$mount_source" ]; then
+    LOCAL_STORAGE_VOLUME="bind:$mount_source"
+    if command -v tar >/dev/null 2>&1; then
+      info "archiving bind mount $mount_source (uploaded files)"
+      tar czf "$BACKUP_DIR/server-local-data.tar.gz" -C "$mount_source" .
+      ok "local storage archived ($(wc -c <"$BACKUP_DIR/server-local-data.tar.gz" | tr -d ' ') bytes)"
+    else
+      warn "local storage is a bind mount at $mount_source and tar is not installed here"
+      warn "archive that directory yourself; it holds uploaded files"
+    fi
+  elif [ -n "$SERVER_CID" ]; then
+    warn "nothing is mounted at $LOCAL_STORAGE_DEST; skipping local-storage archive (S3 storage?)"
   fi
 
   {
@@ -365,7 +399,7 @@ run_backup() {
     printf 'previous_worker_image=%s\n' "$(service_image_ref "$WORKER_CID")"
     printf 'db_image=%s\n' "$DB_IMAGE"
     printf 'pg_database=%s\n' "$PG_DB"
-    printf 'local_storage_volume=%s\n' "$LOCAL_STORAGE_VOLUME"
+    printf 'local_storage=%s\n' "${LOCAL_STORAGE_VOLUME:-none}"
   } >"$BACKUP_DIR/manifest.txt"
   cp "$BACKUP_DIR/manifest.txt" "$BACKUP_ROOT/last-manifest.txt"
   ok "manifest written to $BACKUP_DIR/manifest.txt"
@@ -392,7 +426,7 @@ run_restore_drill() {
 
   local waited=0
   while [ "$waited" -lt 60 ]; do
-    if docker exec -T "$SCRATCH_CONTAINER" pg_isready -U "$PG_USER" -q >/dev/null 2>&1; then
+    if docker exec "$SCRATCH_CONTAINER" pg_isready -U "$PG_USER" -q >/dev/null 2>&1; then
       break
     fi
     sleep 1
