@@ -1,5 +1,4 @@
 import {
-  ForbiddenError,
   InternalServerError,
   NotFoundError,
   UserInputError,
@@ -11,17 +10,6 @@ import {
 import { rowLevelPermissionPredicateGraphqlApiExceptionHandler } from 'src/engine/metadata-modules/row-level-permission-predicate/utils/row-level-permission-predicate-graphql-api-exception-handler.util';
 
 describe('rowLevelPermissionPredicateGraphqlApiExceptionHandler', () => {
-  it('should throw ForbiddenError for ROW_LEVEL_PERMISSION_FEATURE_DISABLED', () => {
-    const exception = new RowLevelPermissionPredicateException(
-      'Row level permission predicate feature is disabled.',
-      RowLevelPermissionPredicateExceptionCode.ROW_LEVEL_PERMISSION_FEATURE_DISABLED,
-    );
-
-    expect(() =>
-      rowLevelPermissionPredicateGraphqlApiExceptionHandler(exception),
-    ).toThrow(ForbiddenError);
-  });
-
   it('should throw NotFoundError for ROW_LEVEL_PERMISSION_PREDICATE_NOT_FOUND', () => {
     const exception = new RowLevelPermissionPredicateException(
       'Predicate not found',

@@ -126,7 +126,14 @@ export const useBuildRecordInputFromRLSPredicates = ({
           fieldMetadataItemMap.get(predicate.fieldMetadataId),
         ),
       )
-      .filter(isDefined);
+      .filter(isDefined)
+      // System-managed fields (createdBy, updatedBy, timestamps) are written by
+      // the server on creation. Sending them back would either be rejected by
+      // the create input or overwrite the actor the server computed.
+      .filter(
+        (filter) =>
+          fieldMetadataItemMap.get(filter.fieldMetadataId)?.isSystem !== true,
+      );
 
     const recordInputFromDynamicFilters: Partial<ObjectRecord> = {};
 

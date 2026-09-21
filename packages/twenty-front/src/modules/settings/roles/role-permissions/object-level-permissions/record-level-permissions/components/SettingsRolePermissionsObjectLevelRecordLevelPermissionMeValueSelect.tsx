@@ -19,6 +19,7 @@ import { getCompositeSubFieldLabel } from '@/object-record/object-filter-dropdow
 import { getCompositeSubFieldType } from '@/object-record/object-filter-dropdown/utils/getCompositeSubFieldType';
 import { getFieldMetadataTypeLabel } from '@/object-record/object-filter-dropdown/utils/getFieldMetadataTypeLabel';
 import { isCompositeFieldType } from '@/object-record/object-filter-dropdown/utils/isCompositeFieldType';
+import { isFilterOnActorWorkspaceMemberSubField } from '@/object-record/object-filter-dropdown/utils/isFilterOnActorWorkspaceMemberSubField';
 import { currentRecordFiltersComponentState } from '@/object-record/record-filter/states/currentRecordFiltersComponentState';
 import { SETTINGS_COMPOSITE_FIELD_TYPE_CONFIGS } from '@/settings/data-model/constants/SettingsCompositeFieldTypeConfigs';
 import { type CompositeFieldSubFieldName } from '@/settings/data-model/types/CompositeFieldSubFieldName';
@@ -116,6 +117,16 @@ export const SettingsRolePermissionsObjectLevelRecordLevelPermissionMeValueSelec
       selectedFieldMetadataItem.relation?.targetObjectMetadata.nameSingular ===
         CoreObjectNameSingular.WorkspaceMember;
 
+    // An actor field carries the workspace member it was performed by in its
+    // workspaceMemberId sub-field, so "Me" binds there the same way a relation
+    // to WorkspaceMember does.
+    const isActorWorkspaceMemberSubField =
+      selectedFieldMetadataItem?.type === FieldMetadataType.ACTOR &&
+      isFilterOnActorWorkspaceMemberSubField(selectedSubFieldName);
+
+    const canBindMeToWorkspaceMemberId =
+      isRelationToWorkspaceMember || isActorWorkspaceMemberSubField;
+
     const getCompatibleWorkspaceMemberFields = () => {
       if (!isDefined(workspaceMemberMetadataItem)) {
         return [];
@@ -192,7 +203,7 @@ export const SettingsRolePermissionsObjectLevelRecordLevelPermissionMeValueSelec
       (field) => field.name === 'id',
     );
 
-    if (isDefined(idField) && isRelationToWorkspaceMember) {
+    if (isDefined(idField) && canBindMeToWorkspaceMemberId) {
       menuItems.push({
         id: 'me-id',
         label: t`Me (User ID)`,
