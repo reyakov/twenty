@@ -1,0 +1,239 @@
+# Plan: un-gate row-level permissions and add "creator-only" record visibility
+
+## Goals
+
+1. Remove the Enterprise license gate from row-level permissions (RLS) so the feature
+   (record-level permission predicates/groups) works on every plan.
+2. Make it possible to restrict a member to only the records they created ("own records
+   only"), instead of all records.
+
+## Status
+
+- Phase 1 (server gate removal): implemented. Includes the billing-sync cleanup removal found during
+  implementation (see below). Not yet verified by typecheck/tests - the workspace has no
+  `node_modules` installed and the sandbox blocks the network.
+- Phase 2 (front-end gate removal): implemented. Same verification caveat: no `node_modules`,
+  and no front-end test/snapshot referenced the removed "Upgrade" card (only Lingui catalogs did,
+  which are intentionally left untouched).
+- Phase 3 (creator-only visibility): implemented through the existing RLS pipeline, no new backend
+  concept and no backend code change. Two product decisions were defaulted rather than answered (see
+  "Decisions taken" below): the filter-builder route only (no one-click preset), and records with no
+  user creator are hidden. Same verification caveat: no `node_modules`.
+- Phases 4-5: not started.
+
+## What exists today
+
+The runtime enforcement is **not** license-gated today. Any predicate rows that exist in
+metadata are compiled into SQL and applied on reads/writes via:
+
+- `packages/twenty-server/src/engine/twenty-orm/repository/workspace-repository.ts`
+  -> `applyRowLevelPermissionPredicates()` / `onBeforeExecute()`
+- `packages/twenty-server/src/engine/twenty-orm/utils/build-row-level-permission-record-filter.util.ts`
+- `packages/twenty-server/src/engine/twenty-orm/utils/build-row-access-policy.util.ts`
+- Predicates are loaded into the per-user permission map unconditionally in
+  `packages/twenty-server/src/engine/metadata-modules/role/services/workspace-roles-permissions-cache.service.ts` (approx. line 208).
+
+The gate exists only at two boundaries:
+
+| Boundary | Location | Behavior when not entitled |
+|---|---|---|
+| Server metadata API (read) | `RowLevelPermissionPredicateService.findByWorkspaceId/findByRoleAndObject/findById`, `RowLevelPermissionPredicateGroupService.*` | returns `[]` / `null` |
+| Server metadata API (write) | `RowLevelPermissionPredicateService.upsertRowLevelPermissionPredicates` -> `hasRowLevelPermissionFeatureOrThrow` | throws `ROW_LEVEL_PERMISSION_FEATURE_DISABLED` |
+| Front-end UI | `SettingsRolePermissionsObjectLevelObjectForm.tsx` (approx. line 61) computes `isRLSBillingEntitlementEnabled`; `SettingsRolePermissionsObjectLevelRecordLevelSection.tsx` renders an "Upgrade" card when false | no editor |
+
+The server check is
+`enterprisePlanService.isValid() && billingService.hasEntitlement(workspaceId, BillingEntitlementKey.RLS)`
+and is duplicated in both RLS services
+(`row-level-permission-predicate.service.ts`,
+`row-level-permission-predicate-group.service.ts`).
+
+A third server-side gate exists outside the metadata API:
+`packages/twenty-server/src/engine/core-modules/billing-webhook/services/billing-entitlement-sync.service.ts`
+deletes every predicate group for a workspace whenever the RLS entitlement is not granted
+(`deleteAllRowLevelPermissionPredicateGroups`), on every billing sync pass. Left in place, it
+would silently wipe predicates created by a now-un-entitled workspace. It must be removed
+together with the two service checks.
+
+The front-end read path is `role.resolver.ts` -> `getRowLevelPermissionPredicatesForRole`
+-> `findByWorkspaceId`, which returns `[]` when not entitled. This is why removing the
+front-end gate alone is insufficient.
+
+### Gap for "creator-only" visibility
+
+The model already supports "field *is* current workspace member" through
+`RowLevelPermissionPredicate.workspaceMemberFieldMetadataId` + `subFieldName`, and the
+backend resolves it:
+
+- `packages/twenty-server/src/engine/twenty-orm/utils/resolve-row-level-permission-record-filter.util.ts`
+- `packages/twenty-server/src/engine/twenty-orm/utils/resolve-workspace-member-predicate-value.util.ts`
+
+However, the RLS filter builder only accepts field types listed in
+`packages/twenty-front/src/modules/settings/roles/role-permissions/object-level-permissions/record-level-permissions/constants/RecordLevelPermissionPredicateFieldTypes.ts`,
+which **excludes `ACTOR`**. As a result, `createdBy is Me` cannot be authored through the
+UI, even though normal view filters support `ACTOR` / `workspaceMemberId`
+(`ObjectFilterDropdownActorSelect.tsx`, `isFilterOnActorWorkspaceMemberSubField.ts`).
+
+Everything downstream of authoring already works for `ACTOR` and needed no change. Verified by
+reading the code rather than running it:
+
+- `getFilterTypeFromFieldType(ACTOR)` returns `'ACTOR'` and `getRecordFilterOperands` returns
+  `IS / IS_NOT / IS_EMPTY / IS_NOT_EMPTY` for the `workspaceMemberId` sub-field.
+- `createdBy` is not a hidden system field, so it is already in
+  `availableFieldMetadataItemsForFilter`; only the RLS allow-list excluded it.
+- Composite sub-field navigation already lists `workspaceMemberId` (label "Workspace Member").
+- `validateRowLevelPermissionRuleOwnershipOrThrow` only checks that
+  `workspaceMemberFieldMetadataId` belongs to the WorkspaceMember object; it does not restrict the
+  target field type, so `ACTOR` targets pass.
+- `validatePredicateValueCompatibility` returns `true` for a `UUID` WorkspaceMember field against an
+  `ACTOR` target (neither the relation-not-target nor the enum-value check applies).
+- `turnRecordFilterIntoGqlOperationFilter` compiles `ACTOR` + `workspaceMemberId` + operand `IS` to
+  `{ createdBy: { workspaceMemberId: { in: [<uuid>] } } }`. The RLS resolver emits a bare UUID for a
+  WorkspaceMember `id` binding, which the schema's `.catch` path coerces into a one-element array.
+
+## Action plan
+
+### Phase 1 - Remove the server-side entitlement gate
+
+1. `packages/twenty-server/src/engine/metadata-modules/row-level-permission-predicate/services/row-level-permission-predicate.service.ts`
+   - Delete `hasRowLevelPermissionFeature()` / `hasRowLevelPermissionFeatureOrThrow()`.
+   - Remove the early-return checks in `findByWorkspaceId`, `findByRoleAndObject`,
+     `findById`; remove the throw in `upsertRowLevelPermissionPredicates`.
+   - Drop `BillingService` + `EnterprisePlanService` constructor deps and unused imports.
+2. `packages/twenty-server/src/engine/metadata-modules/row-level-permission-predicate/services/row-level-permission-predicate-group.service.ts`
+   - Same removal.
+3. `packages/twenty-server/src/engine/metadata-modules/row-level-permission-predicate/row-level-permission.module.ts`
+   - Drop `BillingModule` and `EnterpriseModule` imports if no longer needed.
+4. Remove the dead `ROW_LEVEL_PERMISSION_FEATURE_DISABLED` code from both exception enums,
+   their user-friendly messages, and
+   `row-level-permission-predicate-graphql-api-exception-handler.util.ts`
+   (+ its spec). The `switch`es use `assertUnreachable`, so leaving the codes would keep
+   dead branches compiling.
+5. Drop the entitlement-triggered predicate cleanup in
+   `packages/twenty-server/src/engine/core-modules/billing-webhook/services/billing-entitlement-sync.service.ts`
+   (the `if (!isGranted(BillingEntitlementKey.RLS)) { ... }` block), its
+   `RowLevelPermissionPredicateGroupService` dependency, and the `RowLevelPermissionModule`
+   import in `billing-webhook.module.ts`. This also makes
+   `deleteAllRowLevelPermissionPredicateGroups` dead; remove it and its now-unused repository
+   injection from the group service, and update the billing-sync spec accordingly.
+6. `packages/twenty-docs/developers/extend/apps/config/roles.mdx`
+   - Drop the "without the entitlement ... rejected with `ROW_LEVEL_PERMISSION_FEATURE_DISABLED`" note,
+     and the claim that row-level security is only enforced on the Organization plan or above.
+
+### Phase 2 - Remove the front-end gate
+
+1. `packages/twenty-front/src/modules/settings/roles/role-permissions/object-level-permissions/object-form/components/SettingsRolePermissionsObjectLevelObjectForm.tsx`
+   - Delete `isRLSBillingEntitlementEnabled`, the `BillingEntitlement` / `BillingEntitlementKey`
+     imports, and the `hasOrganizationPlan` prop passed to the record-level section.
+2. `packages/twenty-front/src/modules/settings/roles/role-permissions/object-level-permissions/record-level-permissions/components/SettingsRolePermissionsObjectLevelRecordLevelSection.tsx`
+   - Delete the `hasOrganizationPlan` branch and now-unused imports (`Card`,
+     `SettingsOptionCardContentButton`, `OrganizationAdornment`, `Button`, `IconArrowUp`,
+     `IconLock`, `billingState`, `useAtomStateValue`, `useNavigateSettings`, `SettingsPath`).
+3. Check for snapshots/tests asserting the "Upgrade to access" card.
+
+### Phase 3 - Deliver "only the creator sees their record"
+
+Implemented by reusing the existing RLS pipeline (no new backend concept, **no server change at
+all**). What actually landed:
+
+1. `.../record-level-permissions/constants/RecordLevelPermissionPredicateFieldTypes.ts`
+   - Added `FieldMetadataType.ACTOR`. This alone makes `createdBy` / `updatedBy` selectable in the
+     role record-level field menu. It does **not** change the default filter field: `ACTOR` is
+     composite, and defaults skip composites.
+2. `.../components/SettingsRolePermissionsObjectLevelRecordLevelPermissionMeValueSelect.tsx`
+   - `"Me (User ID)"` is now offered when the selected field is `ACTOR` **and** its sub-field is
+     `workspaceMemberId`, not only for relations to `WorkspaceMember`. The binding is identical:
+     `workspaceMemberFieldMetadataId` = the WorkspaceMember `id` field, `workspaceMemberSubFieldName`
+     = `null`. Reused `isFilterOnActorWorkspaceMemberSubField` rather than re-deriving the sub-field
+     name.
+3. `.../hooks/useBuildRecordInputFromRLSPredicates.ts`
+   - Predicates on `isSystem` fields are dropped before they can be turned into create defaults.
+     **This is the trap the original plan missed**: a `createdBy` predicate would otherwise be
+     merged into the record input as `createdBy: { workspaceMemberId: <id> }`, which the create
+     input rejects or would let a client overwrite the actor the server computed. The server always
+     writes `createdBy` itself, so no creator-only rule needs a prefill. This also fixes the same
+     latent problem for `createdAt` / `updatedAt` predicates.
+
+Steps from the original plan that turned out to be unnecessary: extending the allow-list in
+`useRecordLevelPermissionFilterActions.ts` (covered by the constant), teaching
+`getComparableWorkspaceMemberRelationFields` about `ACTOR` (the `ACTOR` path binds the WorkspaceMember
+`id` directly, so the relation-compatibility search is not involved), and any change to
+`recordLevelPermissionPredicateConversion.ts`, the backend compatibility validator, or
+`useFilteredSelectOptionsFromRLSPredicates.ts` (select-only).
+
+Admin flow to author a creator-only rule: *Add filter* -> field *Created by* -> sub-field
+*Workspace Member* -> variable picker (*Me*) -> **Me (User ID)**.
+
+Optional and **not implemented** (still a product decision): a one-click preset, e.g. "Only records
+they created", that seeds the same predicate.
+
+### Phase 4 - Tests
+
+- Server unit: done in Phase 1 - the feature-disabled assertion in
+  `row-level-permission-predicate-graphql-api-exception-handler.util.spec.ts` is gone, and the
+  billing-sync spec no longer stubs the removed group service.
+- Server integration: keep the existing suites
+  (`test/integration/metadata/suites/row-level-permission-predicate/*`,
+  `.../object-records-permissions/record-level-permissions-on-relation.integration-spec.ts`);
+  add a case that upsert succeeds with `EnterprisePlanService.isValid` mocked false and the
+  RLS entitlement absent.
+- Front-end: add a test asserting the record-level editor renders (no "Upgrade" card); a conversion
+  test for an `ACTOR` field + `workspaceMemberId` + "Me" round-tripping through
+  `recordLevelPermissionPredicateConversion`; and a test that
+  `useBuildRecordInputFromRLSPredicates` ignores a predicate on a system field.
+- Backend compilation: assert that an `ACTOR` / `workspaceMemberId` predicate bound to the current
+  member compiles to `{ <actorField>: { workspaceMemberId: { in: [<memberId>] } } }` in
+  `build-row-level-permission-record-filter.util`'s output.
+- End-to-end: create records as two members, confirm each sees only their own.
+
+### Phase 5 - Cleanup
+
+- Keep `BillingEntitlementKey.RLS` (still referenced by billing catalog / plan definitions).
+- Decide on the `/* @license Enterprise */` headers across the RLS files: they are legal
+  markers, not a runtime gate. Removing them is a licensing/legal call, not a technical one.
+  Phase 3 added no new `@license` headers, but the files it touched already carry them
+  (`...RecordLevelPermissionMeValueSelect.tsx`, `useBuildRecordInputFromRLSPredicates.ts`).
+- Do **not** commit regenerated Lingui catalogs unless translation is part of the task
+  (house rule).
+
+## Risks / open questions
+
+- **Intent check:** removing the gate makes RLS free for every workspace. That is a
+  pricing/legal decision, not just a code change.
+- **`createdBy` semantics:** records created by API keys/automation may have
+  `source != MANUAL` or no `workspaceMemberId`. A creator-only rule hides those rows; that is the
+  default taken (see "Decisions taken"). Revisit if integration-created data must stay visible.
+- **Lockout risk:** an over-broad predicate can hide everything for a role. The engine
+  already defends against unsatisfiable member-bound predicates, but UX warnings may be
+  worth adding.
+- **Unused-import fallout** in the two services and the module; run typecheck/lint after edits.
+
+## Verification commands
+
+```bash
+npx tsgo -p packages/twenty-server/tsconfig.json --noEmit
+npx tsgo -p packages/twenty-front/tsconfig.json --noEmit
+npx jest packages/twenty-server/src/engine/metadata-modules/row-level-permission-predicate \
+  --config=packages/twenty-server/jest.config.mjs
+npx nx run twenty-server:test:integration:with-db-reset   # scoped to RLS suites
+npx nx lint:diff-with-main twenty-server
+npx nx lint:diff-with-main twenty-front
+```
+
+All of Phase 1-3 is still unverified: the workspace has no `node_modules` and no Yarn cache, so
+nothing above has been run.
+
+## Decisions taken, and what is still open
+
+Both pending questions were defaulted so Phase 3 could land. Change either and Phase 3 needs a
+follow-up, not a rewrite:
+
+1. **Filter-builder route, not a one-click preset.** The rule is authored as an ordinary predicate
+   (`createdBy` -> `Workspace Member` -> `Me`). A one-click preset is still available as a follow-up
+   and would store the same predicate, so no schema change.
+2. **Records with no user creator are hidden.** A creator-only rule compiles to
+   `createdBy.workspaceMemberId in [<current member>]`. Records created by API keys, workflows, or
+   imports carry `createdBy.source != MANUAL` and a null `workspaceMemberId`, so they match nothing
+   and become invisible to the restricted role. That follows the literal ask ("only the records they
+   created") but can hide a lot of integration-created data. Keeping them visible would require an
+   `OR` branch, which the current RLS builder cannot author (it only renders root-level `AND` rules),
+   so it needs a scope decision before any work.
