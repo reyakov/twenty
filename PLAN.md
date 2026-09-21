@@ -237,3 +237,89 @@ follow-up, not a rewrite:
    created") but can hide a lot of integration-created data. Keeping them visible would require an
    `OR` branch, which the current RLS builder cannot author (it only renders root-level `AND` rules),
    so it needs a scope decision before any work.
+
+---
+
+# Plan: backup, patch in place, and validate a live Docker Compose instance
+
+## Goal
+
+Get the working tree (un-gated row-level permissions + creator-only visibility) onto the live
+`docker compose` deployment **without removing the stack**: no `docker compose down`, no volume
+removal, no re-initialisation. The database and uploaded files must survive, and there must be a
+restorable backup and a rollback path.
+
+Implemented as `packages/twenty-docker/scripts/patch-instance.sh`, with the commands
+`backup`, `patch`, `validate`, `rollback` and `all` (the three requested steps in order).
+
+## Why an in-place patch is possible
+
+The deployment pins the Twenty image through `TAG` in `.env` (`image: twentycrm/twenty:${TAG}`), which
+is the same knob `install.sh` uses. So patching is: build an image, point `TAG` at it, then
+`docker compose up -d server worker`. Compose recreates only containers whose configuration changed,
+so `db` and `redis` keep running and their volumes are never remounted. The `db`/`redis` services are
+never named on the command line, which is what makes the "no remove and re-deploy" requirement hold.
+
+## Step 1 - Backup (current database and data)
+
+Written to `<compose-dir>/backups/<timestamp>/`:
+
+| Artifact | How |
+|---|---|
+| `database.dump` | `pg_dump --format=custom --no-owner --no-privileges` inside the `db` container, then `docker cp` out |
+| `globals.sql` | `pg_dumpall --globals-only` (roles) |
+| `dump-contents.txt` | `pg_restore --list` of the dump: proves the archive is readable |
+| `server-local-data.tar.gz` | `tar` over the `server-local-data` volume (uploaded files), skipped for S3 storage |
+| `config/` | `docker-compose.yml`, `.env` (holds `ENCRYPTION_KEY`), overrides |
+| `manifest.txt` | timestamp, git commit, previous `TAG`, previous image refs and image ids, volume name |
+| `counts-before.txt` | row counts for `core.workspace`, `core.user`, both `rowLevelPermission*` tables, db size |
+
+Then the dump is **restored into a throwaway Postgres container** before anything is patched, and the
+row counts are compared. That follows the docs' "test restores regularly" advice and makes an unusable
+backup stop the run while the old version is still live.
+
+## Step 2 - Patch (instance)
+
+1. Record what to roll back to in `backups/last-patch.txt` **before** touching anything.
+2. Build the image (`--mode=build`, default):
+   `docker build --target twenty -f packages/twenty-docker/twenty/Dockerfile --platform <host arch> --build-arg APP_VERSION=<tag> -t twentycrm/twenty:<tag> <repo>`.
+   `--target twenty` is the server + frontend image the compose file expects. `PATCH_IMAGE_REPO` defaults
+to the repository the running server container already uses, so switching `TAG` alone resolves it.
+3. Set `TAG=<patched tag>` in `.env`, rewritten through the same inode so the file keeps its mode
+   (`ENCRYPTION_KEY` lives there).
+4. `docker compose up -d server worker`, then wait for the container's own healthcheck to report
+   `healthy`. The server runs `database:init:prod` / `upgrade` itself through its entrypoint, exactly as
+   on a normal restart. `--mode=pull` instead switches to a published release tag, which replaces the
+   locally built image and therefore drops local changes: that is the "upgrade Twenty" path, not the
+   patch path.
+
+## Step 3 - Validate
+
+1. `curl /healthz` against the published port (falls back to the container address).
+2. The running container's image id equals the image just built.
+3. Inside the shipped `dist/`: `upsertRowLevelPermissionPredicates` present as a positive control, and
+   `ROW_LEVEL_PERMISSION_FEATURE_DISABLED`, `hasRowLevelPermissionFeature`,
+   `deleteAllRowLevelPermissionPredicateGroups` all gone. The positive control is what stops a mistyped
+   grep from reading as a pass.
+4. `dist/front/index.html` present, and the removed "Upgrade to access" card's lingui id (`ggd+Ee`) gone
+   from the front bundle. Soft check.
+5. `/client-config` reports `appVersion` equal to the patch tag (when the image was built with one).
+6. Row counts unchanged against `counts-before.txt`, with the RLS tables called out: a drop there is
+   exactly the billing-sync wipe this patch removes.
+7. Prints the remaining by-hand UI checklist (editor renders without the Upgrade card, author
+   `Created by` -> `Workspace Member` -> `Me (User ID)`, two members see only their own records).
+
+## Rollback
+
+`rollback` reads `backups/last-patch.txt`, restores the previous `TAG`, pulls the old image when it is
+not on the host, recreates `server` + `worker`, and prints the dump-restore procedure. The database is
+not touched by a patch, so no data rollback is normally needed.
+
+## Status
+
+- Implemented and verified by running the full `all`, `patch`, `rollback` and failure paths against a
+  stand-in for the `docker`/`curl` CLI, which asserted the calls issued as well as the output: only
+  `docker compose up -d server worker` is ever run, `down` never appears, the `.env` mode is preserved
+  and only `TAG` changes, and a still-gated image makes `validate` exit non-zero.
+- Not yet run against a real Docker daemon, and never against the production instance. The first real
+  run should be `backup` alone, then the by-hand UI checklist after `all`.
