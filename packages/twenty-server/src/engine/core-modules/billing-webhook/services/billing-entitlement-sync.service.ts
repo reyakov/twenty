@@ -9,7 +9,6 @@ import { BILLING_ENTITLEMENT_STATE_LOCK_OPTIONS } from 'src/engine/core-modules/
 import { buildBillingEntitlementStateLockKey } from 'src/engine/core-modules/billing/utils/build-billing-entitlement-state-lock-key.util';
 import { buildBillingEntitlementsFromLookupKeys } from 'src/engine/core-modules/billing/utils/build-billing-entitlements-from-lookup-keys.util';
 import { UsageLimitQuotaService } from 'src/engine/core-modules/usage-limit/services/usage-limit-quota.service';
-import { RowLevelPermissionPredicateGroupService } from 'src/engine/metadata-modules/row-level-permission-predicate/services/row-level-permission-predicate-group.service';
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 
@@ -30,7 +29,6 @@ export class BillingEntitlementSyncService {
   constructor(
     @InjectWorkspaceScopedRepository(BillingEntitlementEntity)
     private readonly billingEntitlementRepository: WorkspaceScopedRepository<BillingEntitlementEntity>,
-    private readonly rowLevelPermissionPredicateGroupService: RowLevelPermissionPredicateGroupService,
     private readonly usageLimitQuotaService: UsageLimitQuotaService,
     private readonly cacheLockService: CacheLockService,
   ) {}
@@ -100,20 +98,6 @@ export class BillingEntitlementSyncService {
         skipUpdateIfNoValuesChanged: true,
       },
     );
-
-    // The opposite order to the reset above, because the unsafe direction is
-    // reversed: predicates deleted while the row still grants RLS would leave
-    // row filtering on with nothing to filter by. Query-time filtering reads
-    // the predicate cache and never the entitlement, so committing the revoke
-    // first is the direction that fails closed: a failure here leaves rows
-    // filtered by predicates that outlived the feature, not unfiltered.
-    // Asked on every pass rather than on the revoke transition, so a cleanup
-    // that failed after the revoke committed is retried by the next sync.
-    if (!isGranted(BillingEntitlementKey.RLS)) {
-      await this.rowLevelPermissionPredicateGroupService.deleteAllRowLevelPermissionPredicateGroups(
-        workspaceId,
-      );
-    }
 
     return billingEntitlements.map(({ key, value }) => ({ key, value }));
   }

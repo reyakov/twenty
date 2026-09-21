@@ -7,12 +7,10 @@ import { BillingEntitlementEntity } from 'src/engine/core-modules/billing/entiti
 import { BillingEntitlementKey } from 'src/engine/core-modules/billing/enums/billing-entitlement-key.enum';
 import { CacheLockService } from 'src/engine/core-modules/cache-lock/cache-lock.service';
 import { UsageLimitQuotaService } from 'src/engine/core-modules/usage-limit/services/usage-limit-quota.service';
-import { RowLevelPermissionPredicateGroupService } from 'src/engine/metadata-modules/row-level-permission-predicate/services/row-level-permission-predicate-group.service';
 import { getWorkspaceScopedRepositoryToken } from 'src/engine/twenty-orm/workspace-scoped-repository/get-workspace-scoped-repository-token.util';
 
 const WORKSPACE_ID = '20202020-1c25-4d02-bf25-6aeccf7ea419';
 const STRIPE_CUSTOMER_ID = 'cus_test';
-const RLS_LOOKUP_KEY = 'RLS';
 
 describe('BillingEntitlementSyncService', () => {
   let service: BillingEntitlementSyncService;
@@ -20,10 +18,6 @@ describe('BillingEntitlementSyncService', () => {
   const billingEntitlementRepository = {
     find: jest.fn(),
     upsert: jest.fn(),
-  };
-
-  const rowLevelPermissionPredicateGroupService = {
-    deleteAllRowLevelPermissionPredicateGroups: jest.fn(),
   };
 
   const usageLimitQuotaService = {
@@ -70,9 +64,6 @@ describe('BillingEntitlementSyncService', () => {
     usageLimitQuotaService.dropIntraWorkspaceLimitCounters.mockResolvedValue(
       undefined,
     );
-    rowLevelPermissionPredicateGroupService.deleteAllRowLevelPermissionPredicateGroups.mockResolvedValue(
-      undefined,
-    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -80,10 +71,6 @@ describe('BillingEntitlementSyncService', () => {
         {
           provide: getWorkspaceScopedRepositoryToken(BillingEntitlementEntity),
           useValue: billingEntitlementRepository,
-        },
-        {
-          provide: RowLevelPermissionPredicateGroupService,
-          useValue: rowLevelPermissionPredicateGroupService,
         },
         {
           provide: UsageLimitQuotaService,
@@ -131,58 +118,6 @@ describe('BillingEntitlementSyncService', () => {
     expect(
       usageLimitQuotaService.dropIntraWorkspaceLimitCounters,
     ).toHaveBeenCalledTimes(1);
-  });
-
-  it('never deletes predicates after a concurrent grant has committed', async () => {
-    let isRlsGrantedInStore = true;
-
-    billingEntitlementRepository.find.mockImplementation(async () => [
-      { key: BillingEntitlementKey.RLS, value: isRlsGrantedInStore },
-    ]);
-
-    billingEntitlementRepository.upsert.mockImplementation(
-      async (
-        _workspaceId: string,
-        entitlements: { key: BillingEntitlementKey; value: boolean }[],
-      ) => {
-        isRlsGrantedInStore =
-          entitlements.find(
-            (entitlement) => entitlement.key === BillingEntitlementKey.RLS,
-          )?.value === true;
-      },
-    );
-
-    // Unserialized, both syncs read the same granted state, then each await
-    // hands over: the revoke's delete lands after the grant has committed and
-    // strips the predicates of a workspace whose feature is back on.
-    await Promise.all([
-      syncEntitlements([]),
-      syncEntitlements([RLS_LOOKUP_KEY]),
-    ]);
-
-    const grantCommitOrder =
-      billingEntitlementRepository.upsert.mock.calls.flatMap((call, index) =>
-        call[1].some(
-          (entitlement: { key: BillingEntitlementKey; value: boolean }) =>
-            entitlement.key === BillingEntitlementKey.RLS && entitlement.value,
-        )
-          ? [
-              billingEntitlementRepository.upsert.mock.invocationCallOrder[
-                index
-              ],
-            ]
-          : [],
-      );
-
-    const deleteOrders =
-      rowLevelPermissionPredicateGroupService
-        .deleteAllRowLevelPermissionPredicateGroups.mock.invocationCallOrder;
-
-    expect(isRlsGrantedInStore).toBe(true);
-    expect(grantCommitOrder).toHaveLength(1);
-    expect(
-      deleteOrders.filter((order) => order > grantCommitOrder[0]),
-    ).toHaveLength(0);
   });
 
   it('locks on a key scoped to the workspace', async () => {
