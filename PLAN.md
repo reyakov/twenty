@@ -273,6 +273,7 @@ Written to `<compose-dir>/backups/<timestamp>/`:
 | `config/` | `docker-compose.yml`, `.env` (holds `ENCRYPTION_KEY`), overrides |
 | `manifest.txt` | timestamp, git commit, previous `TAG`, previous image refs and image ids, storage mount, db size |
 | `counts-before.txt` | row counts for `core.workspace`, `core.user` and both `rowLevelPermission*` tables |
+| `counts-restored*.txt` | the same counts read back from the restored copy, plus psql's stderr when they cannot be read |
 
 Then the dump is **restored into a throwaway Postgres container** before anything is patched, and the
 row counts are compared. That follows the docs' "test restores regularly" advice and makes an unusable
@@ -283,8 +284,12 @@ password**, never through the unix socket: the postgres entrypoint runs a tempor
 while it initialises the cluster and then restarts the real one, so a socket-based readiness check
 passes during that window and `pg_restore` lands in the gap, restoring nothing. And the database size is
 recorded but never compared, because a fresh restore is normally smaller than a live database and would
-always look like a mismatch. If the drill cannot run at all, the backup is reported as verified only as
-a readable archive rather than as verified by a restore.
+always look like a mismatch.
+
+When the drill cannot read its row counts back it retries once, then reports why: psql's own error, the
+scratch container's status and OOM/exit code, and its last log lines. A drill that cannot confirm the
+restore is reported as *verified only as a readable archive*, which is a weaker statement than "verified"
+and deliberately does not block the patch.
 
 ## Step 2 - Patch (instance)
 
@@ -356,5 +361,8 @@ not touched by a patch, so no data rollback is normally needed.
 - The stand-in also reproduces the restore-drill race (a Unix-socket answer during cluster init, TCP
   only afterwards), so the fix is covered: a socket-based readiness check restores nothing and is now
   reported as an incomplete drill rather than as row-count drift.
+- The drill's count step is covered for three outcomes: counts read back (verified), a first round that
+  fails and is recovered by the retry, and counts that stay unreadable in both rounds (reported as
+  unverified, with psql's error, the container's status and its last log lines).
 - Not yet run against a real Docker daemon, and never against the production instance. The first real
   run should be `backup` alone, then the by-hand UI checklist after `all`.

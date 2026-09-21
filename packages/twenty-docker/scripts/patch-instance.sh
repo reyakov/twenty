@@ -278,13 +278,37 @@ service_image_id() {
 
 db_counts() {
   # $2 carries extra `docker exec` flags, used to reach the scratch container over
-  # TCP with a password instead of through the socket.
-  local container=$1 exec_flags=${2:-} table count
+  # TCP with a password instead of through the socket. $3 collects psql's stderr, so
+  # a drill that cannot read the counts can say why instead of just warning.
+  local container=$1 exec_flags=${2:-} errors_file=${3:-/dev/null} table count
+  DB_COUNT_ERROR=
   for table in $CORE_TABLES; do
-    count=$(docker exec $exec_flags "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
-      "SELECT count(*) FROM core.\"$table\"" 2>/dev/null) || count=unavailable
+    if count=$(docker exec $exec_flags "$container" psql -U "$PG_USER" -d "$PG_DB" -tAc \
+      "SELECT count(*) FROM core.\"$table\"" 2>>"$errors_file"); then
+      count=$(printf '%s' "$count" | head -n 1)
+    else
+      count=unavailable
+      # The last error's first line, not its indented continuation.
+      DB_COUNT_ERROR=$(grep -v '^[[:space:]]' "$errors_file" 2>/dev/null | tail -n 1 || true)
+    fi
     printf '%s=%s\n' "$table" "${count:-unavailable}"
   done
+}
+
+# Why the count above came back empty, and whether the scratch container is even
+# still alive, so an inconclusive drill explains itself instead of just warning.
+report_scratch_state() {
+  local container=$1 state
+  state=$(docker inspect -f \
+    '{{.State.Status}}  oomKilled={{.State.OOMKilled}}  exitCode={{.State.ExitCode}}' \
+    "$container" 2>/dev/null || true)
+  if [ -n "$state" ]; then
+    info "scratch container: $state"
+  else
+    warn "the scratch container no longer exists"
+  fi
+  info "last scratch Postgres log lines"
+  docker logs --tail 15 "$container" 2>&1 | sed 's/^/       /' || true
 }
 
 # Reported but never compared: a fresh restore is usually smaller than a live
@@ -479,13 +503,32 @@ run_restore_drill() {
     tail -n 15 "$log_file" | sed 's/^/       /'
   fi
 
-  db_counts "$SCRATCH_CONTAINER" "$(scratch_connect_flags)" >"$BACKUP_DIR/counts-restored.txt"
+  local counts_errors="$BACKUP_DIR/counts-restored-errors.txt"
+  : >"$counts_errors"
+  db_counts "$SCRATCH_CONTAINER" "$(scratch_connect_flags)" "$counts_errors" \
+    >"$BACKUP_DIR/counts-restored.txt"
+
+  if [ "$restored" = "1" ] && grep -q '=unavailable' "$BACKUP_DIR/counts-restored.txt"; then
+    # A restore can leave the server briefly unreachable, so re-wait and read the
+    # counts once more before concluding anything about the data.
+    warn "row counts came back unreadable; waiting for the scratch Postgres and retrying once"
+    if wait_for_scratch_db "$SCRATCH_CONTAINER"; then
+      db_counts "$SCRATCH_CONTAINER" "$(scratch_connect_flags)" "$counts_errors" \
+        >"$BACKUP_DIR/counts-restored.txt"
+    fi
+  fi
 
   if [ "$restored" != "1" ]; then
     warn "the drill did not finish, so the backup is verified only as a readable archive"
     warn "whatever the drill did read back is in counts-restored.txt"
   elif grep -q '=unavailable' "$BACKUP_DIR/counts-restored.txt"; then
-    warn "row counts could not be read from the restored database; see counts-restored.txt"
+    warn "the restore ran but its row counts could not be read back, so the drill proved nothing"
+    if [ -n "$DB_COUNT_ERROR" ]; then
+      warn "last error from the restored database: $DB_COUNT_ERROR"
+    fi
+    report_scratch_state "$SCRATCH_CONTAINER"
+    warn "psql output is in counts-restored-errors.txt; the dump itself is still in $BACKUP_DIR"
+    warn "the backup is verified only as a readable archive"
   elif diff -u "$BACKUP_DIR/counts-before.txt" "$BACKUP_DIR/counts-restored.txt" \
     >"$BACKUP_DIR/counts-restored.diff"; then
     ok "restored row counts match the live database: the backup is verified"
