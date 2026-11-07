@@ -27,5 +27,10 @@ export const mergeRestrictedFieldPermissions = ({
           existing: existing.canUpdate,
           incoming: incoming.canUpdate,
         }),
+        restrictToCreator:
+          existing.restrictToCreator === true ||
+          incoming.restrictToCreator === true
+            ? true
+            : undefined,
       }
     : incoming;

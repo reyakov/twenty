@@ -61,6 +61,11 @@ export class MarketplaceAppRoleFieldPermissionDTO {
   @IsBoolean()
   @Field(() => Boolean, { nullable: true })
   canUpdateFieldValue?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @Field(() => Boolean, { nullable: true })
+  restrictFieldValueToCreator?: boolean;
 }
 
 @ObjectType('MarketplaceAppRole')

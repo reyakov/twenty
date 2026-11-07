@@ -288,6 +288,7 @@ import { AddNativePageNavigationMenuItemFastInstanceCommand } from 'src/database
 import { AddCommandMenuItemAvailabilityCoreObjectNameFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-56/2-56-instance-command-fast-1793783100803-add-command-menu-item-availability-core-object-name';
 import { AddWorkspaceAssistantProfileSlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-56/2-56-instance-command-slow-1793810534548-add-workspace-assistant-profile';
 import { AddFieldMetadataOptionTableFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-56/2-56-instance-command-fast-1793814954654-add-field-metadata-option-table';
+import { CreatorRestrictedFieldPermissionsFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-56/2-56-instance-command-fast-1794045540598-creator-restricted-field-permissions';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -578,4 +579,5 @@ export const INSTANCE_COMMANDS = [
   AddCommandMenuItemAvailabilityCoreObjectNameFastInstanceCommand,
   AddWorkspaceAssistantProfileSlowInstanceCommand,
   AddFieldMetadataOptionTableFastInstanceCommand,
+  CreatorRestrictedFieldPermissionsFastInstanceCommand,
 ];

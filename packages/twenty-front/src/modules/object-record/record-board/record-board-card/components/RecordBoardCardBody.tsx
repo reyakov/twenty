@@ -1,3 +1,4 @@
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import { useRecordRestrictedFieldNames } from '@/object-record/record-store/hooks/useRecordRestrictedFieldNames';
 import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
@@ -65,6 +66,8 @@ export const RecordBoardCardBody = () => {
   };
 
   const restrictedFieldNames = useRecordRestrictedFieldNames(recordId);
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(recordId);
 
   return (
     <RecordCardBodyContainer>
@@ -103,6 +106,8 @@ export const RecordBoardCardBody = () => {
                     fieldMetadataItem,
                     fieldDefinition: correspondingFieldDefinition,
                     objectPermissionsByObjectMetadataId,
+                    recordCreatedByWorkspaceMemberId,
+                    currentWorkspaceMemberId,
                   }),
                 fieldDefinition: correspondingFieldDefinition,
                 useUpdateRecord: useUpdateOneRecordHook,

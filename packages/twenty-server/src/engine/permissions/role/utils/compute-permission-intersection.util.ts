@@ -43,6 +43,7 @@ const intersectRestrictedFields = (
       const current = restrictedFields[fieldMetadataId] ?? {
         canRead: null,
         canUpdate: null,
+        restrictToCreator: undefined,
       };
 
       restrictedFields[fieldMetadataId] = {
@@ -51,6 +52,11 @@ const intersectRestrictedFields = (
           current.canUpdate,
           fieldPermissions.canUpdate,
         ]),
+        restrictToCreator:
+          current.restrictToCreator === true ||
+          fieldPermissions.restrictToCreator === true
+            ? true
+            : undefined,
       };
     }
   }

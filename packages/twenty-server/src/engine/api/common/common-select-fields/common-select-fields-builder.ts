@@ -126,8 +126,22 @@ export class CommonSelectFieldsBuilder {
         maximumDefaultFieldCount,
       });
 
+    const readableCreatedByField = readableFlatFields.find(
+      (field) => field.name === 'createdBy',
+    );
+    const hasCreatorRestrictedField = Object.entries(restrictedFields).some(
+      ([fieldMetadataId, fieldPermission]) =>
+        fieldPermission.restrictToCreator === true &&
+        readableFlatFields.some((field) => field.id === fieldMetadataId),
+    );
+
+    const selectedFieldNamesWithCreator =
+      hasCreatorRestrictedField && isDefined(readableCreatedByField)
+        ? new Set([...fieldNamesToSelect, readableCreatedByField.name])
+        : fieldNamesToSelect;
+
     const flatFields = readableFlatFields.filter((field) =>
-      fieldNamesToSelect.has(field.name),
+      selectedFieldNamesWithCreator.has(field.name),
     );
 
     const relationsSelectFields = buildRelationSelectionFromDepth({

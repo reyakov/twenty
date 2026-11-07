@@ -82,6 +82,34 @@ describe('isRecordFieldReadOnly', () => {
     ).toBe(true);
   });
 
+  it('should return true when the creator restriction excludes a non-creator', () => {
+    const objectPermissionsByObjectMetadataId = {
+      [OBJECT_METADATA_ID]: buildObjectPermissions({
+        restrictedFields: {
+          [FIELD_METADATA_ID]: { restrictToCreator: true },
+        },
+      }),
+    };
+
+    expect(
+      isRecordFieldReadOnly({
+        ...baseParams,
+        objectPermissionsByObjectMetadataId,
+        recordCreatedByWorkspaceMemberId: 'creator-id',
+        currentWorkspaceMemberId: 'other-member-id',
+      }),
+    ).toBe(true);
+
+    expect(
+      isRecordFieldReadOnly({
+        ...baseParams,
+        objectPermissionsByObjectMetadataId,
+        recordCreatedByWorkspaceMemberId: 'creator-id',
+        currentWorkspaceMemberId: 'creator-id',
+      }),
+    ).toBe(false);
+  });
+
   it('should return false when the object has no permissions entry', () => {
     expect(
       isRecordFieldReadOnly({

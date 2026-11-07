@@ -6,6 +6,7 @@ export const FIELD_PERMISSION_FRAGMENT = gql`
     fieldMetadataId
     canReadFieldValue
     canUpdateFieldValue
+    restrictFieldValueToCreator
     id
     roleId
   }

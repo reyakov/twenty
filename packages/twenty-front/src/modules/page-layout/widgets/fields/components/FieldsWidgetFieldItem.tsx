@@ -1,6 +1,7 @@
 import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { type EnrichedObjectMetadataItem } from '@/object-metadata/types/EnrichedObjectMetadataItem';
 import { formatFieldMetadataItemAsColumnDefinition } from '@/object-metadata/utils/formatFieldMetadataItemAsColumnDefinition';
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import {
   FieldContext,
@@ -53,6 +54,9 @@ export const FieldsWidgetFieldItem = ({
     fieldMetadataItem.name,
   );
 
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(recordId);
+
   return (
     <FieldContext.Provider
       key={recordId + fieldMetadataItem.id}
@@ -71,6 +75,8 @@ export const FieldsWidgetFieldItem = ({
             fieldMetadataItem,
             fieldDefinition,
             objectPermissionsByObjectMetadataId,
+            recordCreatedByWorkspaceMemberId,
+            currentWorkspaceMemberId,
           }),
         onMouseEnter,
         anchorId: `${getRecordFieldInputInstanceId({

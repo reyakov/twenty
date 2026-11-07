@@ -32,6 +32,8 @@ export const fromFieldPermissionManifestToUniversalFlatFieldPermission = ({
       fieldPermissionManifest.fieldUniversalIdentifier,
     canReadFieldValue: fieldPermissionManifest.canReadFieldValue ?? null,
     canUpdateFieldValue: fieldPermissionManifest.canUpdateFieldValue ?? null,
+    restrictFieldValueToCreator:
+      fieldPermissionManifest.restrictFieldValueToCreator ?? null,
     createdAt: now,
     updatedAt: now,
   };

@@ -46,4 +46,9 @@ export class FieldPermissionInput {
   @IsOptional()
   @Field(() => Boolean, { nullable: true })
   canUpdateFieldValue?: boolean | null;
+
+  @IsBoolean()
+  @IsOptional()
+  @Field(() => Boolean, { nullable: true })
+  restrictFieldValueToCreator?: boolean | null;
 }

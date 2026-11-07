@@ -2,6 +2,7 @@ import { type FieldMetadataItem } from '@/object-metadata/types/FieldMetadataIte
 import { type EnrichedObjectMetadataItem } from '@/object-metadata/types/EnrichedObjectMetadataItem';
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
 import { useIsRecordReadOnly } from '@/object-record/read-only/hooks/useIsRecordReadOnly';
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
 import { RecordFieldComponentInstanceContext } from '@/object-record/record-field/ui/states/contexts/RecordFieldComponentInstanceContext';
@@ -61,6 +62,9 @@ export const FieldWidgetDisplay = ({
     objectMetadataId: objectMetadataItem.id,
   });
 
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(recordId);
+
   const handleMouseEnter = () => setFieldWidgetHover(true);
   const handleMouseLeave = () => setFieldWidgetHover(false);
 
@@ -90,6 +94,8 @@ export const FieldWidgetDisplay = ({
                 fieldMetadataItem,
                 fieldDefinition,
                 objectPermissionsByObjectMetadataId,
+                recordCreatedByWorkspaceMemberId,
+                currentWorkspaceMemberId,
               }),
               onMouseEnter: handleMouseEnter,
               anchorId: getRecordFieldInputInstanceId({

@@ -1620,6 +1620,7 @@ export interface FieldPermission {
     fieldMetadataId: Scalars['UUID']
     id: Scalars['UUID']
     objectMetadataId: Scalars['UUID']
+    restrictFieldValueToCreator?: Scalars['Boolean']
     roleId: Scalars['UUID']
     __typename: 'FieldPermission'
 }
@@ -2127,6 +2128,7 @@ export interface MarketplaceAppRoleFieldPermission {
     canUpdateFieldValue?: Scalars['Boolean']
     fieldUniversalIdentifier: Scalars['String']
     objectUniversalIdentifier: Scalars['String']
+    restrictFieldValueToCreator?: Scalars['Boolean']
     universalIdentifier: Scalars['String']
     __typename: 'MarketplaceAppRoleFieldPermission'
 }
@@ -6236,12 +6238,13 @@ export interface FieldPermissionGenqlSelection{
     fieldMetadataId?: boolean | number
     id?: boolean | number
     objectMetadataId?: boolean | number
+    restrictFieldValueToCreator?: boolean | number
     roleId?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
 
-export interface FieldPermissionInput {canReadFieldValue?: (Scalars['Boolean'] | null),canUpdateFieldValue?: (Scalars['Boolean'] | null),fieldMetadataId: Scalars['UUID'],objectMetadataId: Scalars['UUID']}
+export interface FieldPermissionInput {canReadFieldValue?: (Scalars['Boolean'] | null),canUpdateFieldValue?: (Scalars['Boolean'] | null),fieldMetadataId: Scalars['UUID'],objectMetadataId: Scalars['UUID'],restrictFieldValueToCreator?: (Scalars['Boolean'] | null)}
 
 export interface FieldRichTextConfigurationGenqlSelection{
     configurationType?: boolean | number
@@ -6803,6 +6806,7 @@ export interface MarketplaceAppRoleFieldPermissionGenqlSelection{
     canUpdateFieldValue?: boolean | number
     fieldUniversalIdentifier?: boolean | number
     objectUniversalIdentifier?: boolean | number
+    restrictFieldValueToCreator?: boolean | number
     universalIdentifier?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number

@@ -235,6 +235,36 @@ describe('computePermissionIntersection', () => {
       });
     });
 
+    it('should keep a creator restriction from any role', () => {
+      const result = computePermissionIntersection([
+        buildRoleRecordsPermissions({
+          [objectMetadataId1]: buildAllRecordsPermissions({
+            ...ALL_GRANTED,
+            restrictedFields: {
+              email: {
+                canRead: null,
+                canUpdate: null,
+                restrictToCreator: true,
+              },
+            },
+          }),
+        }),
+        buildRoleRecordsPermissions({
+          [objectMetadataId1]: buildAllRecordsPermissions({
+            ...ALL_GRANTED,
+            restrictedFields: {
+              email: { canRead: null, canUpdate: null },
+            },
+          }),
+        }),
+      ]);
+
+      expect(
+        result.objects[objectMetadataId1]?.restrictedFields.email
+          ?.restrictToCreator,
+      ).toBe(true);
+    });
+
     it('should handle fields that only exist in some roles', () => {
       const result = computePermissionIntersection([
         buildRoleRecordsPermissions({

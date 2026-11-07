@@ -126,6 +126,9 @@ export const SettingsRolePermissionsObjectLevelObjectFieldPermissionTableAllHead
                 />
               </StyledCheckboxContainer>
             )}
+            {(shouldShowSeeTableHeader || shouldShowUpdateTableHeader) && (
+              <div />
+            )}
           </>
         </StyledSectionHeader>
       </>

@@ -5107,6 +5107,9 @@ export default {
             "objectMetadataId": [
                 542
             ],
+            "restrictFieldValueToCreator": [
+                4
+            ],
             "roleId": [
                 542
             ],
@@ -5126,6 +5129,9 @@ export default {
             ],
             "objectMetadataId": [
                 542
+            ],
+            "restrictFieldValueToCreator": [
+                4
             ],
             "__typename": [
                 1
@@ -6400,6 +6406,9 @@ export default {
             ],
             "objectUniversalIdentifier": [
                 1
+            ],
+            "restrictFieldValueToCreator": [
+                4
             ],
             "universalIdentifier": [
                 1

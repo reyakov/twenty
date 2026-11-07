@@ -46,6 +46,7 @@ type RoleDefinitionForRecordsPermissions = Pick<
     | 'fieldMetadataId'
     | 'canReadFieldValue'
     | 'canUpdateFieldValue'
+    | 'restrictFieldValueToCreator'
   >[];
   rowLevelPermissionPredicates: RowLevelPermissionPredicate[];
   rowLevelPermissionPredicateGroups: RowLevelPermissionPredicateGroup[];
@@ -150,7 +151,8 @@ const buildRestrictedFields = ({
 
     if (
       !isDefined(fieldPermission.canReadFieldValue) &&
-      !isDefined(fieldPermission.canUpdateFieldValue)
+      !isDefined(fieldPermission.canUpdateFieldValue) &&
+      !isDefined(fieldPermission.restrictFieldValueToCreator)
     ) {
       continue;
     }
@@ -163,6 +165,11 @@ const buildRestrictedFields = ({
         ? true
         : fieldPermission.canReadFieldValue,
       canUpdate: fieldPermission.canUpdateFieldValue,
+      restrictToCreator:
+        !isFieldLabelIdentifier &&
+        fieldPermission.restrictFieldValueToCreator === true
+          ? true
+          : undefined,
     };
 
     for (const restrictedFieldId of resolveMorphRelationPermissionFieldIds(

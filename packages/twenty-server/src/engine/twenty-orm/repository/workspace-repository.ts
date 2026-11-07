@@ -17,8 +17,10 @@ import {
 
 import { DatabaseEventAction } from 'src/engine/api/graphql/graphql-query-runner/enums/database-event-action';
 import { type PrivateRecordState } from 'src/engine/permissions/private-record/types/private-record-state.type';
+import { CREATED_BY_WORKSPACE_MEMBER_ID_COLUMN_NAME } from 'src/engine/permissions/private-record/constants/created-by-workspace-member-id-column-name.constant';
 import { findPrivateRecordStates } from 'src/engine/permissions/private-record/utils/find-private-record-states.util';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-auth-context.guard';
 import { isRecordStockTrackedObject } from 'src/engine/core-modules/usage-limit/utils/is-record-stock-tracked-object.util';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object-metadata/types/flat-object-metadata.type';
@@ -1733,6 +1735,74 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     });
   }
 
+  private validateCreatorRestrictedFieldUpdates(
+    updates: {
+      rawRecordBefore: ObjectRecord;
+      setColumns: Record<string, unknown>;
+    }[],
+  ): void {
+    if (this.options.shouldBypassPermissionChecks) {
+      return;
+    }
+
+    const restrictedFields =
+      this.recordsPermissions.objects[this.options.flatObjectMetadata.id]
+        ?.restrictedFields;
+
+    if (!isDefined(restrictedFields)) {
+      return;
+    }
+
+    const creatorRestrictedFieldMetadataIds = new Set(
+      Object.entries(restrictedFields)
+        .filter(
+          ([, fieldPermission]) => fieldPermission.restrictToCreator === true,
+        )
+        .map(([fieldMetadataId]) => fieldMetadataId),
+    );
+
+    if (creatorRestrictedFieldMetadataIds.size === 0) {
+      return;
+    }
+
+    const currentWorkspaceMemberId = isUserAuthContext(this.options.authContext)
+      ? this.options.authContext.workspaceMemberId
+      : undefined;
+    const columnShapeByColumnName =
+      this.options.tableShape.columnShapeByColumnName;
+
+    for (const { rawRecordBefore, setColumns } of updates) {
+      const recordCreatorWorkspaceMemberId =
+        rawRecordBefore[CREATED_BY_WORKSPACE_MEMBER_ID_COLUMN_NAME];
+      const isRecordCreator =
+        isNonEmptyString(currentWorkspaceMemberId) &&
+        recordCreatorWorkspaceMemberId === currentWorkspaceMemberId;
+
+      if (isRecordCreator) {
+        continue;
+      }
+
+      for (const column of Object.keys(setColumns)) {
+        const columnShape = columnShapeByColumnName[column];
+
+        if (
+          !isDefined(columnShape) ||
+          !creatorRestrictedFieldMetadataIds.has(columnShape.fieldMetadataId)
+        ) {
+          continue;
+        }
+
+        throw new PermissionsException(
+          `${PermissionsExceptionMessage.PERMISSION_DENIED}: field "${columnShape.fieldName}" can only be updated on records you created.`,
+          PermissionsExceptionCode.PERMISSION_DENIED,
+          {
+            userFriendlyMessage: msg`Field "${columnShape.fieldName}" can only be updated on records you created.`,
+          },
+        );
+      }
+    }
+  }
+
   // An update must not move a record out of the update policy. Records it
   // did not admit before are left to the update query, which skips them
   private async validateRLSPredicatesForUpdatedRecords(
@@ -1741,6 +1811,8 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
       setColumns: Record<string, unknown>;
     }[],
   ): Promise<void> {
+    this.validateCreatorRestrictedFieldUpdates(updates);
+
     if (this.options.shouldBypassPermissionChecks) {
       return;
     }
@@ -1920,8 +1992,16 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
     }
 
     const columnNamesByAlias = queryBuilder.getReferencedColumnNamesByAlias();
+    const filterOrSortColumnNamesByAlias =
+      queryBuilder.getFilterOrderGroupReferencedColumnNamesByAlias();
 
-    for (const [alias, columnNames] of Object.entries(columnNamesByAlias)) {
+    const aliases = new Set([
+      ...Object.keys(columnNamesByAlias),
+      ...Object.keys(filterOrSortColumnNamesByAlias),
+    ]);
+
+    for (const alias of aliases) {
+      const columnNames = columnNamesByAlias[alias] ?? [];
       const tableShape =
         alias === queryBuilder.alias
           ? this.options.tableShape
@@ -1960,6 +2040,7 @@ export class WorkspaceRepository<TEntity extends ObjectLiteral = ObjectRecord> {
           this.options.internalContext.objectIdByNameSingular,
         selectedColumns: columnNames,
         updatedColumns: [],
+        filterOrSortColumns: filterOrSortColumnNamesByAlias[alias] ?? [],
       });
     }
   }

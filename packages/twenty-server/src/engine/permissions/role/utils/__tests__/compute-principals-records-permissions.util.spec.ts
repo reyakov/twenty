@@ -834,6 +834,43 @@ describe('computePrincipalsRecordsPermissions with a scope', () => {
     });
   });
 
+  it('denies filtering on a creator-restricted field but allows selecting it', () => {
+    const invoicePermissions = compute({
+      scopeObjectPermissions: {
+        ...FULL_ACCESS,
+        restrictedFields: {
+          [AMOUNT_FIELD_ID]: {
+            canRead: null,
+            canUpdate: null,
+            restrictToCreator: true,
+          },
+        },
+      },
+    });
+
+    const validate = (filterOrSortColumns: string[]) =>
+      validateOperationIsPermittedOrThrow({
+        entityName: 'invoice',
+        operationType: 'select',
+        recordsPermissions: buildRoleRecordsPermissions(
+          isDefined(invoicePermissions)
+            ? { [INVOICE_ID]: invoicePermissions }
+            : {},
+        ),
+        flatObjectMetadataMaps,
+        flatFieldMetadataMaps,
+        objectIdByNameSingular: { invoice: INVOICE_ID },
+        selectedColumns: ['amount'],
+        updatedColumns: [],
+        filterOrSortColumns,
+      });
+
+    expect(() => validate(['amount'])).toThrow(
+      'cannot be used to filter or sort',
+    );
+    expect(() => validate([])).not.toThrow();
+  });
+
   describe('inserting a record that sets the predicate field', () => {
     // the user role cannot update amount (a disabled action), which its own predicate exempts on insert
     const insertAmount = (

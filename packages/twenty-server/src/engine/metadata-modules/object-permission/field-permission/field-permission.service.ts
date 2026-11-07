@@ -33,6 +33,7 @@ type DesiredFieldPermission = {
   fieldMetadataId: string;
   canReadFieldValue?: boolean | null;
   canUpdateFieldValue?: boolean | null;
+  restrictFieldValueToCreator?: boolean | null;
 };
 
 const keyFrom = (objectMetadataId: string, fieldMetadataId: string) =>
@@ -51,6 +52,8 @@ const toUniversalFlatFieldPermissionToDelete = (
     fieldPermission.fieldMetadataUniversalIdentifier,
   canReadFieldValue: fieldPermission.canReadFieldValue ?? undefined,
   canUpdateFieldValue: fieldPermission.canUpdateFieldValue ?? undefined,
+  restrictFieldValueToCreator:
+    fieldPermission.restrictFieldValueToCreator ?? undefined,
   createdAt: fieldPermission.createdAt,
   updatedAt: fieldPermission.updatedAt,
 });
@@ -130,13 +133,15 @@ export class FieldPermissionService {
         flatRole,
       });
 
-      const bothNull =
+      const allRestrictionsUnset =
         (fieldPermission.canReadFieldValue === null ||
           fieldPermission.canReadFieldValue === undefined) &&
         (fieldPermission.canUpdateFieldValue === null ||
-          fieldPermission.canUpdateFieldValue === undefined);
+          fieldPermission.canUpdateFieldValue === undefined) &&
+        (fieldPermission.restrictFieldValueToCreator === null ||
+          fieldPermission.restrictFieldValueToCreator === undefined);
 
-      if (bothNull) {
+      if (allRestrictionsUnset) {
         continue;
       }
 
@@ -150,6 +155,8 @@ export class FieldPermissionService {
           fieldMetadataId: fieldPermission.fieldMetadataId,
           canReadFieldValue: fieldPermission.canReadFieldValue,
           canUpdateFieldValue: fieldPermission.canUpdateFieldValue,
+          restrictFieldValueToCreator:
+            fieldPermission.restrictFieldValueToCreator,
         },
       );
     }
@@ -192,8 +199,14 @@ export class FieldPermissionService {
       if (!isDefined(current)) {
         const canReadFieldValue = desired.canReadFieldValue ?? null;
         const canUpdateFieldValue = desired.canUpdateFieldValue ?? null;
+        const restrictFieldValueToCreator =
+          desired.restrictFieldValueToCreator ?? null;
 
-        if (!isDefined(canReadFieldValue) && !isDefined(canUpdateFieldValue)) {
+        if (
+          !isDefined(canReadFieldValue) &&
+          !isDefined(canUpdateFieldValue) &&
+          !isDefined(restrictFieldValueToCreator)
+        ) {
           continue;
         }
 
@@ -204,6 +217,7 @@ export class FieldPermissionService {
               fieldMetadataId: desired.fieldMetadataId,
               canReadFieldValue,
               canUpdateFieldValue,
+              restrictFieldValueToCreator,
             },
             roleId: input.roleId,
             flatApplication: workspaceCustomFlatApplication,
@@ -221,8 +235,16 @@ export class FieldPermissionService {
           desired.canUpdateFieldValue !== undefined
             ? desired.canUpdateFieldValue
             : current.canUpdateFieldValue;
+        const effectiveRestrict =
+          desired.restrictFieldValueToCreator !== undefined
+            ? desired.restrictFieldValueToCreator
+            : current.restrictFieldValueToCreator;
 
-        if (!isDefined(effectiveCanRead) && !isDefined(effectiveCanUpdate)) {
+        if (
+          !isDefined(effectiveCanRead) &&
+          !isDefined(effectiveCanUpdate) &&
+          !isDefined(effectiveRestrict)
+        ) {
           // The mirror pass only owns rows it could have written itself; another application's row is left alone
           const isForeignMirroredRow =
             mirroredFieldKeys.has(key) &&
@@ -241,7 +263,9 @@ export class FieldPermissionService {
 
         const changed =
           effectiveCanRead !== current.canReadFieldValue ||
-          effectiveCanUpdate !== current.canUpdateFieldValue;
+          effectiveCanUpdate !== current.canUpdateFieldValue ||
+          (effectiveRestrict ?? null) !==
+            (current.restrictFieldValueToCreator ?? null);
 
         if (changed) {
           const now = new Date().toISOString();
@@ -256,6 +280,7 @@ export class FieldPermissionService {
               current.fieldMetadataUniversalIdentifier,
             canReadFieldValue: effectiveCanRead,
             canUpdateFieldValue: effectiveCanUpdate,
+            restrictFieldValueToCreator: effectiveRestrict,
             createdAt: current.createdAt,
             updatedAt: now,
           });
@@ -370,7 +395,9 @@ export class FieldPermissionService {
       (isDefined(fieldPermission.canUpdateFieldValue) &&
         fieldPermission.canUpdateFieldValue !== false) ||
       (isDefined(fieldPermission.canReadFieldValue) &&
-        fieldPermission.canReadFieldValue !== false)
+        fieldPermission.canReadFieldValue !== false) ||
+      (isDefined(fieldPermission.restrictFieldValueToCreator) &&
+        fieldPermission.restrictFieldValueToCreator !== true)
     ) {
       throw new PermissionsException(
         PermissionsExceptionMessage.ONLY_FIELD_RESTRICTION_ALLOWED,
@@ -417,6 +444,20 @@ export class FieldPermissionService {
         PermissionsExceptionCode.FIELD_METADATA_NOT_FOUND,
         {
           userFriendlyMessage: msg`The field you are trying to set permissions for could not be found. It may have been deleted.`,
+        },
+      );
+    }
+
+    if (
+      fieldPermission.restrictFieldValueToCreator === true &&
+      fieldPermission.fieldMetadataId ===
+        flatObjectMetadata.labelIdentifierFieldMetadataId
+    ) {
+      throw new PermissionsException(
+        `${PermissionsExceptionMessage.INVALID_SETTING}: label identifier`,
+        PermissionsExceptionCode.INVALID_SETTING,
+        {
+          userFriendlyMessage: msg`The label identifier field cannot be hidden on records created by others.`,
         },
       );
     }
@@ -498,7 +539,9 @@ export class FieldPermissionService {
             fieldPermission.canReadFieldValue !==
               targetInInput.canReadFieldValue ||
             fieldPermission.canUpdateFieldValue !==
-              targetInInput.canUpdateFieldValue;
+              targetInInput.canUpdateFieldValue ||
+            (fieldPermission.restrictFieldValueToCreator ?? null) !==
+              (targetInInput.restrictFieldValueToCreator ?? null);
           if (hasConflict) {
             throw new UserInputError(
               'Conflicting field permissions found for relation target field',
@@ -511,10 +554,11 @@ export class FieldPermissionService {
         continue;
       }
 
-      // The bothNull gate drops a cleared source row from desiredMap, so the mirror must be cleared explicitly or it orphans
+      // The all-unset gate drops a cleared source row from desiredMap, so the mirror must be cleared explicitly or it orphans
       const sourceIsCleared =
         !isDefined(fieldPermission.canReadFieldValue) &&
-        !isDefined(fieldPermission.canUpdateFieldValue);
+        !isDefined(fieldPermission.canUpdateFieldValue) &&
+        !isDefined(fieldPermission.restrictFieldValueToCreator);
 
       desiredMap.set(targetKey, {
         objectMetadataId: targetObjectId,
@@ -525,6 +569,9 @@ export class FieldPermissionService {
         canUpdateFieldValue: sourceIsCleared
           ? null
           : fieldPermission.canUpdateFieldValue,
+        restrictFieldValueToCreator: sourceIsCleared
+          ? null
+          : fieldPermission.restrictFieldValueToCreator,
       });
       mirroredKeys.add(targetKey);
     }

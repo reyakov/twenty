@@ -233,6 +233,7 @@ export class MarketplaceQueryService {
         fieldUniversalIdentifier: permission.fieldUniversalIdentifier,
         canReadFieldValue: permission.canReadFieldValue,
         canUpdateFieldValue: permission.canUpdateFieldValue,
+        restrictFieldValueToCreator: permission.restrictFieldValueToCreator,
       })),
     };
   }

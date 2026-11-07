@@ -18,6 +18,8 @@ export const newFieldPermissionsFilter = (
     dirtyFieldPermission.canReadFieldValue !==
       existingFieldPermission.canReadFieldValue ||
     dirtyFieldPermission.canUpdateFieldValue !==
-      existingFieldPermission.canUpdateFieldValue
+      existingFieldPermission.canUpdateFieldValue ||
+    dirtyFieldPermission.restrictFieldValueToCreator !==
+      existingFieldPermission.restrictFieldValueToCreator
   );
 };

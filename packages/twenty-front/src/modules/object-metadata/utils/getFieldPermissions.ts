@@ -14,5 +14,6 @@ export const getFieldPermissions = ({
   return {
     canReadField: restrictedField?.canRead !== false,
     canUpdateField: restrictedField?.canUpdate !== false,
+    restrictToCreator: restrictedField?.restrictToCreator === true,
   };
 };

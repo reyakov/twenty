@@ -68,6 +68,7 @@ export const useResetObjectPermission = (roleId: string) => {
           ...fieldPermission,
           canUpdateFieldValue: null,
           canReadFieldValue: null,
+          restrictFieldValueToCreator: null,
         });
       },
     );

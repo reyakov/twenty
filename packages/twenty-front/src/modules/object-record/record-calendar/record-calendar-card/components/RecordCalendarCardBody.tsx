@@ -1,4 +1,5 @@
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import { useRecordRestrictedFieldNames } from '@/object-record/record-store/hooks/useRecordRestrictedFieldNames';
 import { StopPropagationContainer } from '@/object-record/record-board/record-board-card/components/StopPropagationContainer';
@@ -40,6 +41,8 @@ export const RecordCalendarCardBody = ({
   const { updateOneRecord } = useUpdateOneRecord();
 
   const restrictedFieldNames = useRecordRestrictedFieldNames(recordId);
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(recordId);
 
   const useUpdateOneRecordHook: RecordUpdateHook = () => {
     const updateEntity = ({ variables }: RecordUpdateHookParams) => {
@@ -116,6 +119,8 @@ export const RecordCalendarCardBody = ({
                     fieldMetadataItem,
                     fieldDefinition: correspondingFieldDefinition,
                     objectPermissionsByObjectMetadataId,
+                    recordCreatedByWorkspaceMemberId,
+                    currentWorkspaceMemberId,
                   }),
                 fieldDefinition: correspondingFieldDefinition,
                 useUpdateRecord: useUpdateOneRecordHook,

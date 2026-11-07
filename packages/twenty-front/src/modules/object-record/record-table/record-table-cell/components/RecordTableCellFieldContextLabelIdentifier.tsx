@@ -1,4 +1,5 @@
 import { getObjectPermissionsForObject } from '@/object-metadata/utils/getObjectPermissionsForObject';
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
 import { useRecordIndexContextOrThrow } from '@/object-record/record-index/contexts/RecordIndexContext';
@@ -26,6 +27,9 @@ export const RecordTableCellFieldContextLabelIdentifier = ({
   } = useRecordIndexContextOrThrow();
   const { recordId, isRecordReadOnly, restrictedFieldNames } =
     useRecordTableRowContextOrThrow();
+
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(recordId);
 
   const { getRecordTableRowIndex } = useGetRecordTableRowIndex();
 
@@ -83,6 +87,8 @@ export const RecordTableCellFieldContextLabelIdentifier = ({
             fieldMetadataItem,
             fieldDefinition,
             objectPermissionsByObjectMetadataId,
+            recordCreatedByWorkspaceMemberId,
+            currentWorkspaceMemberId,
           }),
         maxWidth: recordField.size,
         onRecordChipClick: handleChipClick,

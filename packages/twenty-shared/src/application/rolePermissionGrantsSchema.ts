@@ -13,6 +13,7 @@ export const fieldPermissionGrantSchema = z.strictObject({
   fieldUniversalIdentifier: z.string(),
   canReadFieldValue: z.boolean().optional(),
   canUpdateFieldValue: z.boolean().optional(),
+  restrictFieldValueToCreator: z.boolean().optional(),
 });
 
 export const rolePermissionGrantsSchema = z.strictObject({

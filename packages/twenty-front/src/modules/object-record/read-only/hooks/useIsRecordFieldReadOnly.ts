@@ -2,6 +2,7 @@ import { useObjectMetadataItemById } from '@/object-metadata/hooks/useObjectMeta
 import { formatFieldMetadataItemAsFieldDefinition } from '@/object-metadata/utils/formatFieldMetadataItemAsFieldDefinition';
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
 import { useIsRecordReadOnly } from '@/object-record/read-only/hooks/useIsRecordReadOnly';
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import { useMemo } from 'react';
 import { isDefined } from 'twenty-shared/utils';
@@ -43,6 +44,9 @@ export const useIsRecordFieldReadOnly = ({
     objectMetadataId,
   });
 
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(recordId);
+
   if (!isDefined(fieldMetadataItem)) {
     return false;
   }
@@ -53,5 +57,7 @@ export const useIsRecordFieldReadOnly = ({
     fieldMetadataItem,
     fieldDefinition,
     objectPermissionsByObjectMetadataId,
+    recordCreatedByWorkspaceMemberId,
+    currentWorkspaceMemberId,
   });
 };

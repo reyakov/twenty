@@ -1,6 +1,7 @@
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
 import { useIsRecordReadOnly } from '@/object-record/read-only/hooks/useIsRecordReadOnly';
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import { isFieldRelation } from '@/object-record/record-field/ui/types/guards/isFieldRelation';
 import { isUsableJunctionConfig } from '@/object-record/record-field/ui/utils/junction/isUsableJunctionConfig';
@@ -33,6 +34,9 @@ export const useFieldWidgetActionVisibility = ({
     recordId: targetRecord.id,
     objectMetadataId: objectMetadataItem.id,
   });
+
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(targetRecord.id);
 
   if (
     !isFieldWidget(widget) ||
@@ -75,6 +79,8 @@ export const useFieldWidgetActionVisibility = ({
     fieldMetadataItem,
     fieldDefinition,
     objectPermissionsByObjectMetadataId,
+    recordCreatedByWorkspaceMemberId,
+    currentWorkspaceMemberId,
   });
 
   const showEdit =

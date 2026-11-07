@@ -9,7 +9,11 @@ describe('getFieldPermissions', () => {
         objectPermissions: { restrictedFields: {} },
         fieldMetadataId: FIELD_METADATA_ID,
       }),
-    ).toEqual({ canReadField: true, canUpdateField: true });
+    ).toEqual({
+      canReadField: true,
+      canUpdateField: true,
+      restrictToCreator: false,
+    });
   });
 
   it('should only deny what the restriction explicitly denies', () => {
@@ -22,7 +26,32 @@ describe('getFieldPermissions', () => {
         },
         fieldMetadataId: FIELD_METADATA_ID,
       }),
-    ).toEqual({ canReadField: true, canUpdateField: false });
+    ).toEqual({
+      canReadField: true,
+      canUpdateField: false,
+      restrictToCreator: false,
+    });
+  });
+
+  it('should expose the creator restriction', () => {
+    expect(
+      getFieldPermissions({
+        objectPermissions: {
+          restrictedFields: {
+            [FIELD_METADATA_ID]: {
+              canRead: null,
+              canUpdate: null,
+              restrictToCreator: true,
+            },
+          },
+        },
+        fieldMetadataId: FIELD_METADATA_ID,
+      }),
+    ).toEqual({
+      canReadField: true,
+      canUpdateField: true,
+      restrictToCreator: true,
+    });
   });
 
   it('should deny reading a field restricted for reading', () => {
@@ -35,6 +64,10 @@ describe('getFieldPermissions', () => {
         },
         fieldMetadataId: FIELD_METADATA_ID,
       }),
-    ).toEqual({ canReadField: false, canUpdateField: false });
+    ).toEqual({
+      canReadField: false,
+      canUpdateField: false,
+      restrictToCreator: false,
+    });
   });
 });

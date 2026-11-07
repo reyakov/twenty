@@ -4,7 +4,7 @@ import {
 } from 'src/engine/twenty-orm/sql/utils/build-select-statement.util';
 import { extractColumnNamesFromAggregateExpression } from 'src/utils/extract-column-names-from-aggregate-expression.util';
 
-const QUALIFIED_COLUMN_REFERENCE = /"(\w+)"\."(\w+)"/g;
+export const QUALIFIED_COLUMN_REFERENCE = /"(\w+)"\."(\w+)"/g;
 
 export const collectReferencedColumnNames = ({
   mainAlias,

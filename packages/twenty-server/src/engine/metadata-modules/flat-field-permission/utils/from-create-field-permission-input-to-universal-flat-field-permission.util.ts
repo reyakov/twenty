@@ -55,6 +55,8 @@ export const fromCreateFieldPermissionInputToUniversalFlatFieldPermission = ({
     fieldMetadataUniversalIdentifier,
     canReadFieldValue: fieldPermissionInput.canReadFieldValue ?? undefined,
     canUpdateFieldValue: fieldPermissionInput.canUpdateFieldValue ?? undefined,
+    restrictFieldValueToCreator:
+      fieldPermissionInput.restrictFieldValueToCreator ?? undefined,
     createdAt: now,
     updatedAt: now,
   };

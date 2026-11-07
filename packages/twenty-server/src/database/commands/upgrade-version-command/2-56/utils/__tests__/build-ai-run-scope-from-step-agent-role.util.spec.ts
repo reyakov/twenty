@@ -39,6 +39,7 @@ describe('buildAiRunScopeFromStepAgentRole', () => {
             fieldUniversalIdentifier: 'email',
             canReadFieldValue: false,
             canUpdateFieldValue: null,
+            restrictFieldValueToCreator: null,
           },
         ],
         permissionFlagUniversalIdentifiers: ['send-email', 'ai'],

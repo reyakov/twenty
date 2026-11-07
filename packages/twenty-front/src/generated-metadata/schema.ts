@@ -2601,6 +2601,7 @@ export type FieldPermission = {
   fieldMetadataId: Scalars['UUID']['output'];
   id: Scalars['UUID']['output'];
   objectMetadataId: Scalars['UUID']['output'];
+  restrictFieldValueToCreator?: Maybe<Scalars['Boolean']['output']>;
   roleId: Scalars['UUID']['output'];
 };
 
@@ -2609,6 +2610,7 @@ export type FieldPermissionInput = {
   canUpdateFieldValue?: InputMaybe<Scalars['Boolean']['input']>;
   fieldMetadataId: Scalars['UUID']['input'];
   objectMetadataId: Scalars['UUID']['input'];
+  restrictFieldValueToCreator?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type FieldRichTextConfiguration = {
@@ -3260,6 +3262,7 @@ export type MarketplaceAppRoleFieldPermission = {
   canUpdateFieldValue?: Maybe<Scalars['Boolean']['output']>;
   fieldUniversalIdentifier: Scalars['String']['output'];
   objectUniversalIdentifier: Scalars['String']['output'];
+  restrictFieldValueToCreator?: Maybe<Scalars['Boolean']['output']>;
   universalIdentifier: Scalars['String']['output'];
 };
 

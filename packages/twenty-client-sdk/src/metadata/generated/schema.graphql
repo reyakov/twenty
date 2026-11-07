@@ -2463,6 +2463,7 @@ type FieldPermission {
   fieldMetadataId: UUID!
   id: UUID!
   objectMetadataId: UUID!
+  restrictFieldValueToCreator: Boolean
   roleId: UUID!
 }
 
@@ -2471,6 +2472,7 @@ input FieldPermissionInput {
   canUpdateFieldValue: Boolean
   fieldMetadataId: UUID!
   objectMetadataId: UUID!
+  restrictFieldValueToCreator: Boolean
 }
 
 type FieldRichTextConfiguration {
@@ -3085,6 +3087,7 @@ type MarketplaceAppRoleFieldPermission {
   canUpdateFieldValue: Boolean
   fieldUniversalIdentifier: String!
   objectUniversalIdentifier: String!
+  restrictFieldValueToCreator: Boolean
   universalIdentifier: String!
 }
 

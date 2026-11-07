@@ -7,6 +7,7 @@ import {
 } from 'twenty-shared/utils';
 
 import { CommonSelectFieldsBuilder } from 'src/engine/api/common/common-select-fields/common-select-fields-builder';
+import { addCreatorColumnsToSelectedFields } from 'src/engine/api/common/common-record-visibility/utils/add-creator-columns-to-selected-fields.util';
 import { SelectionDepth } from 'src/engine/api/common/common-select-fields/types/selection-depth.type';
 import { CommonGroupByOutputItem } from 'src/engine/api/common/types/common-group-by-output-item.type';
 import { CommonSelectedFields } from 'src/engine/api/common/types/common-selected-fields-result.type';
@@ -104,7 +105,13 @@ export abstract class RestApiBaseHandler {
       depth,
     });
 
-    return selectedFields;
+    return addCreatorColumnsToSelectedFields({
+      select: selectedFields,
+      recordsPermissions,
+      flatObjectMetadata,
+      flatObjectMetadataMaps,
+      flatFieldMetadataMaps,
+    });
   }
 
   async computeRecordSelectedFields({
@@ -129,7 +136,7 @@ export abstract class RestApiBaseHandler {
         authContext,
       );
 
-    return this.commonSelectFieldsBuilder.buildFromDepth({
+    const { selectedFields } = this.commonSelectFieldsBuilder.buildFromDepth({
       recordsPermissions,
       readableObjectMetadataIds:
         await this.findRelationReadableObjectMetadataIds({
@@ -144,6 +151,16 @@ export abstract class RestApiBaseHandler {
       requestedFields,
       maximumDefaultFieldCount: REST_API_DEFAULT_MAX_FIELDS,
     });
+
+    return {
+      selectedFields: addCreatorColumnsToSelectedFields({
+        select: selectedFields,
+        recordsPermissions,
+        flatObjectMetadata,
+        flatObjectMetadataMaps,
+        flatFieldMetadataMaps,
+      }),
+    };
   }
 
   private async findRelationReadableObjectMetadataIds({

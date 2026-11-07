@@ -88,6 +88,7 @@ export const useSaveDraftRoleToDB = ({
       return (
         fieldPermissionToFilter.canReadFieldValue !== false &&
         fieldPermissionToFilter.canUpdateFieldValue !== false &&
+        fieldPermissionToFilter.restrictFieldValueToCreator !== true &&
         fieldPermissionDoesntExistYetInPersistedFieldPermissions
       );
     });
@@ -246,6 +247,8 @@ export const useSaveDraftRoleToDB = ({
                 fieldMetadataId: fieldPermission.fieldMetadataId,
                 canReadFieldValue: fieldPermission.canReadFieldValue,
                 canUpdateFieldValue: fieldPermission.canUpdateFieldValue,
+                restrictFieldValueToCreator:
+                  fieldPermission.restrictFieldValueToCreator,
               })) ?? [],
           },
         },
@@ -417,6 +420,8 @@ export const useSaveDraftRoleToDB = ({
                 fieldMetadataId: fieldPermission.fieldMetadataId,
                 canReadFieldValue: fieldPermission.canReadFieldValue,
                 canUpdateFieldValue: fieldPermission.canUpdateFieldValue,
+                restrictFieldValueToCreator:
+                  fieldPermission.restrictFieldValueToCreator,
               })) ?? [],
           },
         },

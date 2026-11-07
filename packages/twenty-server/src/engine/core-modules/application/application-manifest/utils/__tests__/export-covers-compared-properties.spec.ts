@@ -275,6 +275,7 @@ const FIELD_PERMISSION_MANIFEST: FieldPermissionManifest = {
   fieldUniversalIdentifier: FIELD_UID,
   canReadFieldValue: true,
   canUpdateFieldValue: false,
+  restrictFieldValueToCreator: true,
 };
 
 const PERMISSION_FLAG_MANIFEST: PermissionFlagManifest = {

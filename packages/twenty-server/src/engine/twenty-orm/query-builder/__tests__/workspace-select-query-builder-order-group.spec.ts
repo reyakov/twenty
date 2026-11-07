@@ -147,17 +147,27 @@ describe('WorkspaceSelectQueryBuilder order, group and distinct', () => {
     );
   });
 
-  it('should append additional GROUP BY expressions with addGroupBy', () => {
+  it('should report filter, group and order columns separately from projections', () => {
     const { queryBuilder } = buildQueryBuilder();
 
-    queryBuilder
-      .select([])
-      .addSelect('COUNT(*)', 'totalCount')
-      .groupBy('"person"."companyId"')
-      .addGroupBy('"person"."nameFirstName"');
+    queryBuilder.setFindOptions({ select: { id: true } });
+    queryBuilder.leftJoin('person.company', 'company');
+    queryBuilder.andWhere('company.name = :name', { name: 'Acme' });
+    queryBuilder.addGroupBy('company.name');
+    queryBuilder.addOrderBy('company.name', 'ASC');
 
-    expect(queryBuilder.getQuery()).toContain(
-      'GROUP BY "person"."companyId", "person"."nameFirstName"',
-    );
+    expect(
+      queryBuilder.getFilterOrderGroupReferencedColumnNamesByAlias(),
+    ).toEqual({ company: ['name'] });
+  });
+
+  it('should not report projection columns as filter columns', () => {
+    const { queryBuilder } = buildQueryBuilder();
+
+    queryBuilder.setFindOptions({ select: { id: true } });
+
+    expect(
+      queryBuilder.getFilterOrderGroupReferencedColumnNamesByAlias(),
+    ).toEqual({});
   });
 });

@@ -71,6 +71,7 @@ import { getWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace
 import { WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { addTimelineActivityObjectColumnsToSelect } from 'src/modules/timeline/utils/add-timeline-activity-object-columns-to-select.util';
+import { addCreatorColumnsToSelectedFields } from 'src/engine/api/common/common-record-visibility/utils/add-creator-columns-to-selected-fields.util';
 import { type RoleRecordsPermissions } from 'src/engine/permissions/types/role-records-permissions.type';
 
 @Injectable()
@@ -282,11 +283,18 @@ export abstract class CommonBaseQueryRunnerService<
         ...processedArgs,
         selectedFieldsResult: {
           ...processedArgs.selectedFieldsResult,
-          select: addTimelineActivityObjectColumnsToSelect({
-            select: processedArgs.selectedFieldsResult.select,
-            flatObjectMetadata: queryRunnerContext.flatObjectMetadata,
+          select: addCreatorColumnsToSelectedFields({
+            select: addTimelineActivityObjectColumnsToSelect({
+              select: processedArgs.selectedFieldsResult.select,
+              flatObjectMetadata: queryRunnerContext.flatObjectMetadata,
+              recordsPermissions:
+                extendedQueryRunnerContext.repository.recordsPermissions,
+              flatObjectMetadataMaps: queryRunnerContext.flatObjectMetadataMaps,
+              flatFieldMetadataMaps: queryRunnerContext.flatFieldMetadataMaps,
+            }),
             recordsPermissions:
               extendedQueryRunnerContext.repository.recordsPermissions,
+            flatObjectMetadata: queryRunnerContext.flatObjectMetadata,
             flatObjectMetadataMaps: queryRunnerContext.flatObjectMetadataMaps,
             flatFieldMetadataMaps: queryRunnerContext.flatFieldMetadataMaps,
           }),

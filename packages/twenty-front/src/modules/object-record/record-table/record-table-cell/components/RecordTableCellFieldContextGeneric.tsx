@@ -1,5 +1,6 @@
 import { getObjectPermissionsForObject } from '@/object-metadata/utils/getObjectPermissionsForObject';
 import { isLabelIdentifierField } from '@/object-metadata/utils/isLabelIdentifierField';
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import { type RecordField } from '@/object-record/record-field/types/RecordField';
 import { FieldContext } from '@/object-record/record-field/ui/contexts/FieldContext';
@@ -27,6 +28,9 @@ export const RecordTableCellFieldContextGeneric = ({
 }: RecordTableCellFieldContextGenericProps) => {
   const { recordId, isRecordReadOnly, restrictedFieldNames } =
     useRecordTableRowContextOrThrow();
+
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(recordId);
 
   const isRecordTableCellsNonEditable = useAtomComponentStateValue(
     isRecordTableCellsNonEditableComponentState,
@@ -141,6 +145,8 @@ export const RecordTableCellFieldContextGeneric = ({
             fieldMetadataItem,
             fieldDefinition,
             objectPermissionsByObjectMetadataId,
+            recordCreatedByWorkspaceMemberId,
+            currentWorkspaceMemberId,
           }),
         isForbidden: !hasObjectReadPermissions || isFieldRestricted,
       }}

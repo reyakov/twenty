@@ -10,4 +10,6 @@ export const fromFlatFieldPermissionToFieldPermissionDto = (
   roleId: flatFieldPermission.roleId,
   canReadFieldValue: flatFieldPermission.canReadFieldValue ?? null,
   canUpdateFieldValue: flatFieldPermission.canUpdateFieldValue ?? null,
+  restrictFieldValueToCreator:
+    flatFieldPermission.restrictFieldValueToCreator ?? null,
 });

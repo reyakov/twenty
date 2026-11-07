@@ -12,6 +12,7 @@ const DEFAULT_FIELD_PERMISSION_GQL_FIELDS = `
   roleId
   canReadFieldValue
   canUpdateFieldValue
+  restrictFieldValueToCreator
 `;
 
 export const upsertFieldPermissionsQueryFactory = ({

@@ -75,6 +75,9 @@ export class FieldPermissionEntity extends SyncableEntity {
   @Column({ nullable: true, type: 'boolean' })
   canUpdateFieldValue?: boolean | null;
 
+  @Column({ nullable: true, type: 'boolean' })
+  restrictFieldValueToCreator?: boolean | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

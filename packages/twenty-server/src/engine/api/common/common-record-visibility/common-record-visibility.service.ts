@@ -4,7 +4,9 @@ import { type ObjectRecord } from 'twenty-shared/types';
 
 import { type RecordVisibilityRestrictionHandler } from 'src/engine/api/common/common-record-visibility/types/record-visibility-restriction-handler.type';
 import { collectRecordsByObjectNameSingular } from 'src/engine/api/common/common-record-visibility/utils/collect-records-by-object-name-singular.util';
+import { maskCreatorRestrictedFields } from 'src/engine/api/common/common-record-visibility/utils/mask-creator-restricted-fields.util';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
+import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-auth-context.guard';
 import { type FlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/types/flat-entity-maps.type';
 import { type OrmFlatFieldMetadata } from 'src/engine/metadata-modules/flat-field-metadata/types/orm-flat-field-metadata.type';
 import { type FlatObjectMetadata } from 'src/engine/metadata-modules/flat-object-metadata/types/flat-object-metadata.type';
@@ -44,31 +46,44 @@ export class CommonRecordVisibilityService {
     authContext: WorkspaceAuthContext;
     recordsPermissions: RoleRecordsPermissions;
   }): Promise<void> {
-    if (this.handlersByObjectNameSingular.size === 0 || records.length === 0) {
+    if (records.length === 0) {
       return;
     }
 
-    const recordsByObjectNameSingular = collectRecordsByObjectNameSingular({
+    if (this.handlersByObjectNameSingular.size > 0) {
+      const recordsByObjectNameSingular = collectRecordsByObjectNameSingular({
+        records,
+        flatObjectMetadata,
+        flatObjectMetadataMaps,
+        flatFieldMetadataMaps,
+        objectNameSingulars: new Set(this.handlersByObjectNameSingular.keys()),
+      });
+
+      for (const [
+        objectNameSingular,
+        collectedRecords,
+      ] of recordsByObjectNameSingular) {
+        await this.handlersByObjectNameSingular
+          .get(objectNameSingular)
+          ?.applyVisibilityRestrictions({
+            records: collectedRecords,
+            authContext,
+            recordsPermissions,
+            flatObjectMetadataMaps,
+            flatFieldMetadataMaps,
+          });
+      }
+    }
+
+    maskCreatorRestrictedFields({
       records,
       flatObjectMetadata,
       flatObjectMetadataMaps,
       flatFieldMetadataMaps,
-      objectNameSingulars: new Set(this.handlersByObjectNameSingular.keys()),
+      recordsPermissions,
+      currentWorkspaceMemberId: isUserAuthContext(authContext)
+        ? authContext.workspaceMemberId
+        : undefined,
     });
-
-    for (const [
-      objectNameSingular,
-      collectedRecords,
-    ] of recordsByObjectNameSingular) {
-      await this.handlersByObjectNameSingular
-        .get(objectNameSingular)
-        ?.applyVisibilityRestrictions({
-          records: collectedRecords,
-          authContext,
-          recordsPermissions,
-          flatObjectMetadataMaps,
-          flatFieldMetadataMaps,
-        });
-    }
   }
 }

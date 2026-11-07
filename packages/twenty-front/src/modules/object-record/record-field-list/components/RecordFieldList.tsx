@@ -3,6 +3,7 @@ import { FieldDescriptionTooltipProvider } from '@/object-record/record-field/ui
 import { formatFieldMetadataItemAsColumnDefinition } from '@/object-metadata/utils/formatFieldMetadataItemAsColumnDefinition';
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
 import { useIsRecordReadOnly } from '@/object-record/read-only/hooks/useIsRecordReadOnly';
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import { useRecordRestrictedFieldNames } from '@/object-record/record-store/hooks/useRecordRestrictedFieldNames';
 import { RecordFieldListCellEditModePortal } from '@/object-record/record-field-list/anchored-portal/components/RecordFieldListCellEditModePortal';
@@ -62,6 +63,8 @@ export const RecordFieldList = ({
     useRecordFieldListNonRelationFieldMetadataItems(objectNameSingular);
 
   const restrictedFieldNames = useRecordRestrictedFieldNames(objectRecordId);
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(objectRecordId);
 
   return (
     <FieldDescriptionTooltipProvider>
@@ -103,6 +106,8 @@ export const RecordFieldList = ({
                       fieldMetadataItem,
                       fieldDefinition,
                       objectPermissionsByObjectMetadataId,
+                      recordCreatedByWorkspaceMemberId,
+                      currentWorkspaceMemberId,
                     }),
                   onMouseEnter: () => handleMouseEnter(index),
                   anchorId: `${getRecordFieldInputInstanceId({

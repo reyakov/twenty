@@ -1,5 +1,6 @@
 import { useObjectPermissions } from '@/object-record/hooks/useObjectPermissions';
 import { useIsRecordReadOnly } from '@/object-record/read-only/hooks/useIsRecordReadOnly';
+import { useRecordCreatorAccess } from '@/object-record/read-only/hooks/useRecordCreatorAccess';
 import { isRecordFieldReadOnly } from '@/object-record/read-only/utils/isRecordFieldReadOnly';
 import { RecordFieldsScopeContextProvider } from '@/object-record/record-field-list/contexts/RecordFieldsScopeContext';
 import {
@@ -44,6 +45,9 @@ export const WidgetActionFieldEdit = ({
     recordId: targetRecord.id,
     objectMetadataId: objectMetadataItem.id,
   });
+
+  const { recordCreatedByWorkspaceMemberId, currentWorkspaceMemberId } =
+    useRecordCreatorAccess(targetRecord.id);
 
   assertIsDefinedOrThrow(fieldMetadataItem);
   assertIsDefinedOrThrow(fieldDefinition);
@@ -92,6 +96,8 @@ export const WidgetActionFieldEdit = ({
       fieldMetadataItem,
       fieldDefinition,
       objectPermissionsByObjectMetadataId,
+      recordCreatedByWorkspaceMemberId,
+      currentWorkspaceMemberId,
     }),
     anchorId: recordFieldInputInstanceId,
   } satisfies GenericFieldContextType;

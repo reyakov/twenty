@@ -25,7 +25,10 @@ import {
 import { WorkspaceMutationQueryBuilder } from 'src/engine/twenty-orm/query-builder/workspace-mutation-query-builder';
 import { type MutationKind } from 'src/engine/twenty-orm/sql/utils/build-mutation-statement.util';
 import { buildOrderByClauses } from 'src/engine/twenty-orm/sql/utils/build-order-by-clauses.util';
-import { collectReferencedColumnNames } from 'src/engine/twenty-orm/sql/utils/collect-referenced-column-names.util';
+import {
+  collectReferencedColumnNames,
+  QUALIFIED_COLUMN_REFERENCE,
+} from 'src/engine/twenty-orm/sql/utils/collect-referenced-column-names.util';
 import { compileNamedParameters } from 'src/engine/twenty-orm/sql/utils/compile-named-parameters.util';
 import {
   RESERVED_PARAMETER_NAMES,
@@ -51,6 +54,7 @@ import {
 } from 'src/engine/twenty-orm/sql/utils/build-select-statement.util';
 import { type WorkspaceTableShape } from 'src/engine/twenty-orm/table-shape/types/workspace-table-shape.type';
 import { escapeIdentifier } from 'src/engine/workspace-manager/workspace-migration/utils/remove-sql-injection.util';
+import { extractColumnNamesFromAggregateExpression } from 'src/utils/extract-column-names-from-aggregate-expression.util';
 
 let objectWhereParameterSequence = 0;
 let existsFilterSequence = 0;
@@ -756,6 +760,71 @@ export class WorkspaceSelectQueryBuilder implements WhereExpressionLike {
         })),
       distinctOnExpressions: this.distinctOnExpressions,
     });
+  }
+
+  getFilterOrderGroupReferencedColumnNamesByAlias(): Record<string, string[]> {
+    const state = this.toSelectStatementState();
+    const aliases = collectStatementAliases(state);
+    const extraSelectAliases = new Set(
+      this.extraSelectClauses.map((selectClause) =>
+        escapeIdentifier(selectClause.alias),
+      ),
+    );
+    const isExtraSelectAlias = (expression: string) =>
+      extraSelectAliases.has(expression);
+
+    const expressions = [
+      ...state.whereClauses.map((whereClause) => whereClause.sql),
+      ...state.existsFilterClauses.map(
+        (existsFilterClause) => existsFilterClause.conditionSql,
+      ),
+      ...state.orderByClauses
+        .map((orderByClause) => orderByClause.expression)
+        .filter((expression) => !isExtraSelectAlias(expression)),
+      ...state.groupByExpressions.filter(
+        (expression) => !isExtraSelectAlias(expression),
+      ),
+      ...state.distinctOnExpressions,
+    ];
+
+    const columnNamesByAlias: Record<string, Set<string>> = {};
+
+    const addColumnName = (alias: string, columnName: string) => {
+      columnNamesByAlias[alias] = (
+        columnNamesByAlias[alias] ?? new Set<string>()
+      ).add(columnName);
+    };
+
+    for (const expression of expressions) {
+      const quotedExpression = quoteQualifiedAliasReferences(
+        expression,
+        aliases,
+      );
+      const qualifiedReferences = [
+        ...quotedExpression.matchAll(QUALIFIED_COLUMN_REFERENCE),
+      ];
+
+      if (qualifiedReferences.length > 0) {
+        for (const [, alias, columnName] of qualifiedReferences) {
+          addColumnName(alias, columnName);
+        }
+
+        continue;
+      }
+
+      for (const columnName of extractColumnNamesFromAggregateExpression(
+        quotedExpression,
+      ) ?? []) {
+        addColumnName(this.alias, columnName);
+      }
+    }
+
+    return Object.fromEntries(
+      Object.entries(columnNamesByAlias).map(([alias, columnNames]) => [
+        alias,
+        [...columnNames],
+      ]),
+    );
   }
 
   getSelectedColumnNames(): string[] {

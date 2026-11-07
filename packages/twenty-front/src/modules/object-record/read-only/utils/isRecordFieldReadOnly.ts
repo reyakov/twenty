@@ -13,6 +13,8 @@ type IsRecordFieldReadOnlyParams = {
   fieldMetadataItem: Pick<FieldMetadataItem, 'id' | 'isUIEditable'>;
   objectPermissionsByObjectMetadataId: ObjectPermissionsByObjectMetadataId;
   fieldDefinition?: FieldDefinition<FieldMetadata>;
+  recordCreatedByWorkspaceMemberId?: string;
+  currentWorkspaceMemberId?: string;
 };
 
 export const isRecordFieldReadOnly = ({
@@ -21,6 +23,8 @@ export const isRecordFieldReadOnly = ({
   fieldMetadataItem,
   objectPermissionsByObjectMetadataId,
   fieldDefinition,
+  recordCreatedByWorkspaceMemberId,
+  currentWorkspaceMemberId,
 }: IsRecordFieldReadOnlyParams) => {
   if (isRecordReadOnly || !(fieldMetadataItem.isUIEditable ?? true)) {
     return true;
@@ -31,15 +35,19 @@ export const isRecordFieldReadOnly = ({
     objectMetadataId,
   );
 
+  const fieldPermissions = getFieldPermissions({
+    objectPermissions,
+    fieldMetadataId: fieldMetadataItem.id,
+  });
+
   if (
     !canReachSomeRecords({
       objectRecordsPermissions: objectPermissions,
       operationType: 'update',
     }) ||
-    !getFieldPermissions({
-      objectPermissions,
-      fieldMetadataId: fieldMetadataItem.id,
-    }).canUpdateField
+    !fieldPermissions.canUpdateField ||
+    (fieldPermissions.restrictToCreator &&
+      recordCreatedByWorkspaceMemberId !== currentWorkspaceMemberId)
   ) {
     return true;
   }

@@ -18,6 +18,7 @@ const FIELD_PERMISSION_MANIFEST: Required<FieldPermissionManifest> = {
   fieldUniversalIdentifier: FIELD_UID,
   canReadFieldValue: true,
   canUpdateFieldValue: false,
+  restrictFieldValueToCreator: true,
 };
 
 const forward = (fieldPermissionManifest: FieldPermissionManifest) =>

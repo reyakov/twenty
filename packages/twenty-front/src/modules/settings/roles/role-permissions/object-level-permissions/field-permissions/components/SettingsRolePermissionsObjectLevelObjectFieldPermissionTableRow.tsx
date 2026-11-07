@@ -21,7 +21,7 @@ import {
 } from '~/generated-metadata/graphql';
 
 export const FIELD_PERMISSION_TABLE_ROW_GRID_TEMPLATE_COLUMNS =
-  '180px minmax(0, 1fr) 60px 60px';
+  '180px minmax(0, 1fr) 60px 60px 60px';
 
 const StyledNameLabel = styled.div`
   overflow: hidden;
@@ -127,6 +127,29 @@ export const SettingsRolePermissionsObjectLevelObjectFieldPermissionTableRow =
       }
     };
 
+    const isCreatorRestricted =
+      fieldPermissionForThisFieldMetadataItem?.restrictFieldValueToCreator ===
+      true;
+
+    const handleCreatorRestrictionChange = () => {
+      if (isDefined(fieldPermissionForThisFieldMetadataItem)) {
+        upsertFieldPermissionInDraftRole({
+          ...fieldPermissionForThisFieldMetadataItem,
+          restrictFieldValueToCreator: isCreatorRestricted ? null : true,
+        });
+      } else {
+        upsertFieldPermissionInDraftRole({
+          id: v4(),
+          fieldMetadataId: fieldMetadataItem.id,
+          objectMetadataId: objectMetadataItem.id,
+          canReadFieldValue: null,
+          canUpdateFieldValue: null,
+          restrictFieldValueToCreator: true,
+          roleId,
+        });
+      }
+    };
+
     const hasRestriction = isDefined(fieldPermissionForThisFieldMetadataItem);
 
     const isReadRestricted =
@@ -207,6 +230,18 @@ export const SettingsRolePermissionsObjectLevelObjectFieldPermissionTableRow =
                 checked={true}
                 onChange={handleUpdateChange}
                 type={isUpdateRestricted ? 'override' : 'default'}
+              />
+            </TableCell>
+          )}
+          {(shouldShowSeeTableHeader || shouldShowUpdateTableHeader) && (
+            <TableCell align="left">
+              <OverridableCheckbox
+                disabled={
+                  !(fieldMetadataItem.isUIEditable ?? true) || isLabelIdentifier
+                }
+                checked={isCreatorRestricted}
+                onChange={handleCreatorRestrictionChange}
+                type="no_cta"
               />
             </TableCell>
           )}

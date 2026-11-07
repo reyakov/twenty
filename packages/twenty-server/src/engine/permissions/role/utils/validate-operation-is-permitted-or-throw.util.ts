@@ -1,3 +1,4 @@
+import { msg } from '@lingui/core/macro';
 import { isNonEmptyString } from '@sniptt/guards';
 import isEmpty from 'lodash.isempty';
 import {
@@ -28,6 +29,7 @@ type ValidateOperationIsPermittedOrThrowArgs = {
   objectIdByNameSingular: Record<string, string>;
   selectedColumns: string[];
   updatedColumns: string[];
+  filterOrSortColumns?: string[];
 };
 
 export const validateOperationIsPermittedOrThrow = ({
@@ -39,6 +41,7 @@ export const validateOperationIsPermittedOrThrow = ({
   objectIdByNameSingular,
   selectedColumns,
   updatedColumns,
+  filterOrSortColumns,
 }: ValidateOperationIsPermittedOrThrowArgs) => {
   const objectMetadataIdForEntity = objectIdByNameSingular[entityName];
 
@@ -79,6 +82,7 @@ export const validateOperationIsPermittedOrThrow = ({
       validateReadFieldPermissionOrThrow({
         restrictedFields,
         selectedColumns,
+        filterOrSortColumns,
         columnNameToFieldMetadataIdMap,
         entityName,
         flatFieldMetadataMaps,
@@ -120,6 +124,7 @@ export const validateOperationIsPermittedOrThrow = ({
       validateReadFieldPermissionOrThrow({
         restrictedFields,
         selectedColumns,
+        filterOrSortColumns,
         columnNameToFieldMetadataIdMap,
         entityName,
         flatFieldMetadataMaps,
@@ -168,19 +173,27 @@ const buildFieldPermissionDeniedMessage = ({
 const validateReadFieldPermissionOrThrow = ({
   restrictedFields,
   selectedColumns,
+  filterOrSortColumns,
   columnNameToFieldMetadataIdMap,
   entityName,
   flatFieldMetadataMaps,
 }: {
   restrictedFields: RestrictedFieldsPermissions;
   selectedColumns: string[];
+  filterOrSortColumns?: string[];
   columnNameToFieldMetadataIdMap: Record<string, string>;
   entityName: string;
   flatFieldMetadataMaps: FlatEntityMaps<OrmFlatFieldMetadata>;
 }) => {
+  const hasCreatorRestrictions = Object.values(restrictedFields).some(
+    (field) => field.restrictToCreator === true,
+  );
   const noReadRestrictions =
     isEmpty(restrictedFields) ||
-    Object.values(restrictedFields).every((field) => field.canRead !== false);
+    (!hasCreatorRestrictions &&
+      Object.values(restrictedFields).every(
+        (field) => field.canRead !== false,
+      ));
 
   if (noReadRestrictions) {
     return;
@@ -205,6 +218,32 @@ const validateReadFieldPermissionOrThrow = ({
           flatFieldMetadataMaps,
         }),
         PermissionsExceptionCode.PERMISSION_DENIED,
+      );
+    }
+  }
+
+  for (const column of filterOrSortColumns ?? []) {
+    const fieldMetadataId = columnNameToFieldMetadataIdMap[column];
+
+    if (!fieldMetadataId) {
+      throw new InternalServerError(
+        `Field metadata id not found for column name ${column}`,
+      );
+    }
+
+    if (restrictedFields[fieldMetadataId]?.restrictToCreator === true) {
+      const fieldName =
+        findFlatEntityByIdInFlatEntityMaps({
+          flatEntityId: fieldMetadataId,
+          flatEntityMaps: flatFieldMetadataMaps,
+        })?.name ?? column;
+
+      throw new PermissionsException(
+        `${PermissionsExceptionMessage.PERMISSION_DENIED}: field "${fieldName}" cannot be used to filter or sort because it is only visible on records you created.`,
+        PermissionsExceptionCode.PERMISSION_DENIED,
+        {
+          userFriendlyMessage: msg`Field "${fieldName}" cannot be used to filter or sort because it is only visible on records you created.`,
+        },
       );
     }
   }

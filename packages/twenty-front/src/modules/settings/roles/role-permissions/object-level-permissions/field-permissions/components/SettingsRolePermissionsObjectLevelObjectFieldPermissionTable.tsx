@@ -129,6 +129,11 @@ export const SettingsRolePermissionsObjectLevelObjectFieldPermissionTable = ({
                 <TableHeaderText>{t`Edit`}</TableHeaderText>
               </TableHeader>
             )}
+            {(shouldShowSeeTableHeader || shouldShowUpdateTableHeader) && (
+              <TableHeader>
+                <TableHeaderText>{t`Only own records`}</TableHeaderText>
+              </TableHeader>
+            )}
           </>
         </TableRow>
         <SettingsRolePermissionsObjectLevelObjectFieldPermissionTableAllHeaderRow

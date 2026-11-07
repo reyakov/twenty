@@ -19,4 +19,10 @@ export const fromFlatFieldPermissionToFieldPermissionManifest = ({
   ...(isDefined(flatFieldPermission.canUpdateFieldValue)
     ? { canUpdateFieldValue: flatFieldPermission.canUpdateFieldValue }
     : {}),
+  ...(isDefined(flatFieldPermission.restrictFieldValueToCreator)
+    ? {
+        restrictFieldValueToCreator:
+          flatFieldPermission.restrictFieldValueToCreator,
+      }
+    : {}),
 });
