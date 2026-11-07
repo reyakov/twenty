@@ -6,7 +6,6 @@ import { In } from 'typeorm';
 import { ApiKeyEntity } from 'src/engine/core-modules/api-key/api-key.entity';
 import { ApplicationEntity } from 'src/engine/core-modules/application/application.entity';
 import { type UsageQuotaScopeInput } from 'src/engine/core-modules/usage-limit/dtos/usage-quota-scope.input';
-import { UsageLimitEntitlementService } from 'src/engine/core-modules/usage-limit/services/usage-limit-entitlement.service';
 import { UsageLimitQuotaService } from 'src/engine/core-modules/usage-limit/services/usage-limit-quota.service';
 import { UsageLimitService } from 'src/engine/core-modules/usage-limit/services/usage-limit.service';
 import { UsagePeriodService } from 'src/engine/core-modules/usage-limit/services/usage-period.service';
@@ -46,7 +45,6 @@ export class UsageQuotaConsumptionService {
     private readonly logicFunctionRepository: WorkspaceScopedRepository<LogicFunctionEntity>,
     private readonly usageLimitService: UsageLimitService,
     private readonly usageLimitQuotaService: UsageLimitQuotaService,
-    private readonly usageLimitEntitlementService: UsageLimitEntitlementService,
     private readonly usagePeriodService: UsagePeriodService,
     private readonly usageAnalyticsService: UsageAnalyticsService,
   ) {}
@@ -127,18 +125,10 @@ export class UsageQuotaConsumptionService {
       return [];
     }
 
-    const enforceableLimits =
-      await this.usageLimitEntitlementService.findEnforceableLimits({
-        workspaceId,
-        limits: usageLimits,
-      });
-
-    const enforceableIds = new Set(enforceableLimits.map((limit) => limit.id));
-
     const [quotaConsumptionById, spenderLabelById] = await Promise.all([
       this.usageLimitQuotaService.readLimitConsumptions({
         workspaceId,
-        limits: enforceableLimits,
+        limits: usageLimits,
       }),
       this.findSpenderLabels({ workspaceId, usageLimits }),
     ]);
@@ -146,7 +136,6 @@ export class UsageQuotaConsumptionService {
     return usageLimits.map((usageLimit) =>
       buildCustomQuota({
         usageLimit,
-        isEnforced: enforceableIds.has(usageLimit.id),
         consumption: quotaConsumptionById.get(usageLimit.id),
         spenderLabel: spenderLabelById.get(usageLimit.spenderId) ?? null,
       }),

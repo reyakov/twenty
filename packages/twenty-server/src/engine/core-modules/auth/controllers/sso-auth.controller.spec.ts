@@ -6,7 +6,6 @@ import { type Repository } from 'typeorm';
 
 import { SsoAuthController } from 'src/engine/core-modules/auth/controllers/sso-auth.controller';
 import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-rest-api-exception.filter';
-import { EnterpriseFeaturesEnabledGuard } from 'src/engine/core-modules/auth/guards/enterprise-features-enabled.guard';
 import { OidcAuthGuard } from 'src/engine/core-modules/auth/guards/oidc-auth.guard';
 import { SamlAuthGuard } from 'src/engine/core-modules/auth/guards/saml-auth.guard';
 import { AuthService } from 'src/engine/core-modules/auth/services/auth.service';
@@ -99,8 +98,6 @@ describe('SsoAuthController', () => {
         },
       ],
     })
-      .overrideGuard(EnterpriseFeaturesEnabledGuard)
-      .useValue({ canActivate: () => true })
       .overrideGuard(SamlAuthGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(OidcAuthGuard)

@@ -14,7 +14,6 @@ export type UsageQuotaWithConsumption = {
   periodUnit: PeriodUnit;
   unit: UsageUnit;
   limitValue: number;
-  isEnforced: boolean;
   consumedValue: number | null;
   remainingValue: number | null;
   periodStart: Date | null;

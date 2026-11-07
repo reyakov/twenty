@@ -10,8 +10,6 @@ import { Repository } from 'typeorm';
 import { ClickHouseService } from 'src/database/clickhouse/clickhouse.service';
 import { formatDateTimeForClickHouse } from 'src/database/clickhouse/utils/format-date-time-for-clickhouse.util';
 import { type ReachableApplications } from 'src/engine/core-modules/application/types/reachable-applications.type';
-import { BillingService } from 'src/engine/core-modules/billing/services/billing.service';
-import { EnterprisePlanService } from 'src/engine/core-modules/enterprise/services/enterprise-plan.service';
 import { EventLogRetentionService } from 'src/engine/core-modules/event-logs/retention/services/event-log-retention.service';
 import { UserWorkspaceEntity } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { type WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
@@ -38,8 +36,6 @@ const MAX_LIMIT = 10000;
 export class EventLogsService {
   constructor(
     private readonly clickHouseService: ClickHouseService,
-    private readonly billingService: BillingService,
-    private readonly enterprisePlanService: EnterprisePlanService,
     private readonly eventLogRetentionService: EventLogRetentionService,
     @InjectRepository(UserWorkspaceEntity)
     private readonly userWorkspaceRepository: Repository<UserWorkspaceEntity>,
@@ -52,15 +48,14 @@ export class EventLogsService {
   ): Promise<EventLogQueryResult> {
     const workspaceId = workspace.id;
 
-    await this.validateAccess(workspaceId, input.table);
+    await this.validateAccess(input.table);
 
     const limit = Math.min(input.first ?? 100, MAX_LIMIT);
     const tableName = getClickHouseTableName(input.table);
     const eventFieldName = EVENT_LOG_TYPES[input.table].eventFieldName;
 
     const retentionStartDate =
-      await this.eventLogRetentionService.getRetentionStartDate({
-        workspaceId,
+      this.eventLogRetentionService.getRetentionStartDate({
         workspaceRetentionInDays: workspace.eventLogRetentionDays,
       });
 
@@ -180,10 +175,7 @@ export class EventLogsService {
     };
   }
 
-  async validateAccess(
-    workspaceId: string,
-    table: EventLogTable,
-  ): Promise<void> {
+  async validateAccess(table: EventLogTable): Promise<void> {
     if (!ALLOWED_TABLES.includes(table)) {
       throw new EventLogsException(
         `Invalid table: ${table}`,
@@ -195,26 +187,6 @@ export class EventLogsService {
       throw new EventLogsException(
         'Audit logs require ClickHouse to be configured. Please set the CLICKHOUSE_URL environment variable.',
         EventLogsExceptionCode.CLICKHOUSE_NOT_CONFIGURED,
-      );
-    }
-
-    const requiredEntitlement = EVENT_LOG_TYPES[table].requiresEntitlement;
-
-    if (requiredEntitlement === null) {
-      return;
-    }
-
-    const hasAccess =
-      this.enterprisePlanService.isValid() &&
-      (await this.billingService.hasEntitlement(
-        workspaceId,
-        requiredEntitlement,
-      ));
-
-    if (!hasAccess) {
-      throw new EventLogsException(
-        'Audit logs require an Organization subscription.',
-        EventLogsExceptionCode.NO_ENTITLEMENT,
       );
     }
   }

@@ -24,8 +24,6 @@ export const workspaceGraphqlApiExceptionHandler = (error: Error) => {
       case WorkspaceExceptionCode.APPLICATION_UNINSTALL_IN_PROGRESS:
         throw new ConflictError(error);
       case WorkspaceExceptionCode.ENVIRONMENT_VAR_NOT_ENABLED:
-      case WorkspaceExceptionCode.WORKSPACE_CUSTOM_DOMAIN_DISABLED:
-      case WorkspaceExceptionCode.EVENT_LOG_RETENTION_DISABLED:
         throw new ForbiddenError(error);
       case WorkspaceExceptionCode.IFRAME_ORIGIN_LIMIT_EXCEEDED:
       case WorkspaceExceptionCode.IFRAME_MEDIA_PERMISSION_ORIGIN_NOT_VALID:

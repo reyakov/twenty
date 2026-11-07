@@ -67,7 +67,6 @@ const DEFINITIONS = {
       ],
     },
   ],
-  isIntraWorkspaceLimitEntitled: true,
   hasAllowancePeriod: false,
 };
 

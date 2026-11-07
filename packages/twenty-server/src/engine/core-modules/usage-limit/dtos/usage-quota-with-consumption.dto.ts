@@ -38,9 +38,6 @@ export class UsageQuotaWithConsumptionDTO {
   @Field(() => GraphQLBigInt)
   limitValue: number;
 
-  @Field(() => Boolean)
-  isEnforced: boolean;
-
   @Field(() => GraphQLBigInt, { nullable: true })
   consumedValue: number | null;
 

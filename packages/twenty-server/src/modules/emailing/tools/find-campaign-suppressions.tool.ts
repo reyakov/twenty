@@ -2,7 +2,6 @@ import { ToolCategory } from 'twenty-shared/ai';
 import { z } from 'zod';
 
 import { MessageSuppressionReason } from 'src/engine/core-modules/emailing-domain/types/message-suppression-reason.type';
-import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
 import { DefineTool } from 'src/engine/core-modules/tool-provider/decorators/define-tool.decorator';
 import { BaseTool } from 'src/engine/core-modules/tool-provider/interfaces/base-tool.interface';
 import { type ToolExecuteArgs } from 'src/engine/core-modules/tool-provider/types/tool-execute-args.type';
@@ -44,7 +43,6 @@ export class FindCampaignSuppressionsTool extends BaseTool<
 
   constructor(
     private readonly messageSuppressionService: MessageSuppressionService,
-    private readonly emailGroupAccessService: EmailGroupAccessService,
   ) {
     super();
   }
@@ -55,8 +53,6 @@ export class FindCampaignSuppressionsTool extends BaseTool<
   }: ToolExecuteArgs<
     typeof findCampaignSuppressionsInputSchema
   >): Promise<ToolOutput> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     const { records, totalCount } =
       await this.messageSuppressionService.findSuppressions({
         workspaceId,

@@ -54,7 +54,6 @@ const DEFINITIONS = {
       operatorOnlyScopes: [],
     },
   ],
-  isIntraWorkspaceLimitEntitled: true,
   hasAllowancePeriod: true,
 };
 

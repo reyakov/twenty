@@ -11,7 +11,6 @@ import {
   UsageLimitException,
   UsageLimitExceptionCode,
 } from 'src/engine/core-modules/usage-limit/exceptions/usage-limit.exception';
-import { UsageLimitEntitlementService } from 'src/engine/core-modules/usage-limit/services/usage-limit-entitlement.service';
 import { UsageLimitQuotaService } from 'src/engine/core-modules/usage-limit/services/usage-limit-quota.service';
 import { UsageLimitStockService } from 'src/engine/core-modules/usage-limit/services/usage-limit-stock.service';
 import { UsagePeriodService } from 'src/engine/core-modules/usage-limit/services/usage-period.service';
@@ -23,7 +22,6 @@ import {
   buildUsageLimitScope,
   type UsageLimitScope,
 } from 'src/engine/core-modules/usage-limit/utils/build-usage-limit-scope.util';
-import { isIntraWorkspaceScoped } from 'src/engine/core-modules/usage-limit/utils/is-intra-workspace-scoped.util';
 import { isStockLimit } from 'src/engine/core-modules/usage-limit/utils/is-stock-limit.util';
 import { validateUsageLimitAgainstDefinition } from 'src/engine/core-modules/usage-limit/utils/validate-usage-limit-against-definition.util';
 import { validateUsageLimitAgainstKindRule } from 'src/engine/core-modules/usage-limit/utils/validate-usage-limit-against-kind-rule.util';
@@ -52,7 +50,6 @@ export class UsageLimitService {
     private readonly workspaceCacheService: WorkspaceCacheService,
     private readonly usageLimitQuotaService: UsageLimitQuotaService,
     private readonly usageLimitStockService: UsageLimitStockService,
-    private readonly usageLimitEntitlementService: UsageLimitEntitlementService,
     private readonly usagePeriodService: UsagePeriodService,
   ) {}
 
@@ -69,7 +66,7 @@ export class UsageLimitService {
     input: CreateUsageLimitInput;
     isOperator: boolean;
   }): Promise<UsageLimitEntity> {
-    await this.validateInput({ workspaceId, input, isOperator });
+    await this.validateInput({ workspaceId, input });
 
     const scope = buildUsageLimitScope(input);
 
@@ -128,7 +125,7 @@ export class UsageLimitService {
       isOperator,
     });
 
-    await this.validateInput({ workspaceId, input: input.payload, isOperator });
+    await this.validateInput({ workspaceId, input: input.payload });
 
     const scope = buildUsageLimitScope(input.payload);
 
@@ -210,27 +207,12 @@ export class UsageLimitService {
   private async validateInput({
     workspaceId,
     input,
-    isOperator,
   }: {
     workspaceId: string;
     input: CreateUsageLimitInput;
-    isOperator: boolean;
   }): Promise<void> {
     validateUsageLimitAgainstDefinition(input);
     validateUsageLimitAgainstKindRule(input);
-
-    if (
-      !isOperator &&
-      isIntraWorkspaceScoped(input.spenderType) &&
-      !(await this.usageLimitEntitlementService.isIntraWorkspaceLimitEntitled(
-        workspaceId,
-      ))
-    ) {
-      throw new UsageLimitException(
-        'Intra-workspace usage limits require the Organization plan',
-        UsageLimitExceptionCode.LIMIT_NOT_ENTITLED,
-      );
-    }
 
     if (
       input.periodUnit === 'allowancePeriod' &&

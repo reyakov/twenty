@@ -13,7 +13,6 @@ export enum SsoExceptionCode {
   INVALID_ISSUER_URL = 'INVALID_ISSUER_URL',
   INVALID_IDP_TYPE = 'INVALID_IDP_TYPE',
   UNKNOWN_SSO_CONFIGURATION_ERROR = 'UNKNOWN_SSO_CONFIGURATION_ERROR',
-  SSO_DISABLE = 'SSO_DISABLE',
 }
 
 const getSsoExceptionUserFriendlyMessage = (code: SsoExceptionCode) => {
@@ -30,8 +29,6 @@ const getSsoExceptionUserFriendlyMessage = (code: SsoExceptionCode) => {
       return msg`Invalid identity provider type.`;
     case SsoExceptionCode.UNKNOWN_SSO_CONFIGURATION_ERROR:
       return msg`SSO configuration error.`;
-    case SsoExceptionCode.SSO_DISABLE:
-      return msg`SSO is disabled.`;
     default:
       assertUnreachable(code);
   }

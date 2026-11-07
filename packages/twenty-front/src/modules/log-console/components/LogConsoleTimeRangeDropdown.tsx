@@ -46,7 +46,6 @@ export const LogConsoleTimeRangeDropdown = ({
     retentionInHours,
     retentionLabel,
     retentionDescription,
-    isRetentionConfigurable,
   } = useLogConsoleRetention();
   const [logConsoleTimeZone, setLogConsoleTimeZone] = useAtomState(
     logConsoleTimeZoneState,
@@ -170,7 +169,6 @@ export const LogConsoleTimeRangeDropdown = ({
               <ListItemButton
                 description={retentionLabel}
                 descriptionPlacement="end"
-                disabled={!isRetentionConfigurable}
                 onClick={openRetentionSettings}
               >
                 {t`Retention`}

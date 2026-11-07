@@ -2,7 +2,6 @@ import { ToolCategory } from 'twenty-shared/ai';
 import { isDefined } from 'twenty-shared/utils';
 import { z } from 'zod';
 
-import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
 import { DefineTool } from 'src/engine/core-modules/tool-provider/decorators/define-tool.decorator';
 import { BaseTool } from 'src/engine/core-modules/tool-provider/interfaces/base-tool.interface';
 import { type ToolExecuteArgs } from 'src/engine/core-modules/tool-provider/types/tool-execute-args.type';
@@ -34,7 +33,6 @@ export class SendCampaignTestTool extends BaseTool<
 
   constructor(
     private readonly messageCampaignService: MessageCampaignService,
-    private readonly emailGroupAccessService: EmailGroupAccessService,
   ) {
     super();
   }
@@ -50,8 +48,6 @@ export class SendCampaignTestTool extends BaseTool<
         error: 'This tool can only run on behalf of a workspace member',
       };
     }
-
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
 
     const { messageId } = await this.messageCampaignService.sendCampaignTest({
       workspaceId,

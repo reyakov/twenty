@@ -35,17 +35,6 @@ describe('UsageLimitGraphqlApiExceptionFilter', () => {
     );
   });
 
-  it('surfaces a not-entitled limit as a forbidden error', () => {
-    const graphqlError = catchAsGraphQLError(
-      new UsageLimitException(
-        'Intra-workspace usage limits require the Organization plan',
-        UsageLimitExceptionCode.LIMIT_NOT_ENTITLED,
-      ),
-    );
-
-    expect(graphqlError.extensions.code).toBe(ErrorCode.FORBIDDEN);
-  });
-
   it('surfaces an operator-only default as a forbidden error carrying its own message', () => {
     const graphqlError = catchAsGraphQLError(
       new UsageLimitException(

@@ -90,7 +90,6 @@ export const useUsageLimitRows = (
         : null,
       spenderType: quota.spenderType,
       resourceType: quota.resourceType,
-      isEnforced: quota.isEnforced,
       consumedPercentage: progress?.consumedPercentage ?? null,
       consumedText: isDefined(consumedValue)
         ? formatLimitValue({

@@ -7,7 +7,6 @@ import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorato
 import { CampaignAudiencePreviewDTO } from 'src/engine/core-modules/emailing-domain/dtos/campaign-audience-preview.dto';
 import { CancelMessageCampaignInput } from 'src/engine/core-modules/emailing-domain/dtos/cancel-message-campaign.input';
 import { CancelMessageCampaignOutputDTO } from 'src/engine/core-modules/emailing-domain/dtos/cancel-message-campaign-output.dto';
-import { EmailGroupAccessGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/email-group-access-graphql-api-exception.filter';
 import { EmailingDomainGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/emailing-domain-graphql-api-exception.filter';
 import { PreviewMessageCampaignAudienceInput } from 'src/engine/core-modules/emailing-domain/dtos/preview-message-campaign-audience.input';
 import { PreviewMessageCampaignSendInput } from 'src/engine/core-modules/emailing-domain/dtos/preview-message-campaign-send.input';
@@ -16,7 +15,6 @@ import { SendEmailViaDomainOutputDTO } from 'src/engine/core-modules/emailing-do
 import { SendMessageCampaignInput } from 'src/engine/core-modules/emailing-domain/dtos/send-message-campaign.input';
 import { SendMessageCampaignTestInput } from 'src/engine/core-modules/emailing-domain/dtos/send-message-campaign-test.input';
 import { SendMessageCampaignOutputDTO } from 'src/engine/core-modules/emailing-domain/dtos/send-message-campaign-output.dto';
-import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { type I18nContext } from 'src/engine/core-modules/i18n/types/i18n-context.type';
 import { UsageLimitGraphqlApiExceptionFilter } from 'src/engine/core-modules/usage-limit/filters/usage-limit-graphql-api-exception.filter';
@@ -49,7 +47,6 @@ const EMAILING_SEND_ACCESS_POLICY: AccessPolicy = {
 };
 
 @UseFilters(
-  EmailGroupAccessGraphqlApiExceptionFilter,
   EmailingDomainGraphqlApiExceptionFilter,
   ThrottlerGraphqlApiExceptionFilter,
   AuthGraphqlApiExceptionFilter,
@@ -63,7 +60,6 @@ export class EmailingSendResolver {
     private readonly messageCampaignScheduleService: MessageCampaignScheduleService,
     private readonly messageCampaignAudienceService: MessageCampaignAudienceService,
     private readonly messageCampaignLifecycleService: MessageCampaignLifecycleService,
-    private readonly emailGroupAccessService: EmailGroupAccessService,
   ) {}
 
   @Mutation(() => SendMessageCampaignOutputDTO)
@@ -73,8 +69,6 @@ export class EmailingSendResolver {
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
     @AuthUserWorkspaceId() userWorkspaceId: string,
   ): Promise<SendMessageCampaignOutputDTO> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     return this.messageCampaignScheduleService.sendNowOrScheduleOrThrow({
       workspaceId: currentWorkspace.id,
       userWorkspaceId,
@@ -90,8 +84,6 @@ export class EmailingSendResolver {
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
     @AuthUserWorkspaceId() userWorkspaceId: string,
   ): Promise<CancelMessageCampaignOutputDTO> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     return this.messageCampaignLifecycleService.cancelCampaignOrThrow({
       workspaceId: currentWorkspace.id,
       userWorkspaceId,
@@ -107,8 +99,6 @@ export class EmailingSendResolver {
     @AuthUserWorkspaceId({ allowUndefined: true })
     userWorkspaceId: string | undefined,
   ): Promise<SendEmailViaDomainOutputDTO> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     const result = await this.messageCampaignService.sendTest({
       workspaceId: currentWorkspace.id,
       spenders: { userWorkspaceId },
@@ -129,8 +119,6 @@ export class EmailingSendResolver {
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
     @AuthUserWorkspaceId() _userWorkspaceId: string,
   ): Promise<CampaignAudiencePreviewDTO> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     return this.messageCampaignAudienceService.previewAudience({
       workspaceId: currentWorkspace.id,
       listId: input.listId,
@@ -161,8 +149,6 @@ export class EmailingSendResolver {
     @AuthUserWorkspaceId() userWorkspaceId: string,
     @Context() context: I18nContext,
   ): Promise<PreviewMessageCampaignSendOutputDTO> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     return this.messageCampaignService.previewSend({
       workspaceId: currentWorkspace.id,
       userWorkspaceId,

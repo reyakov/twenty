@@ -5870,7 +5870,6 @@ type UsageQuotaDefinition {
 type UsageQuotaDefinitions {
   definitions: [UsageQuotaDefinition!]!
   hasAllowancePeriod: Boolean!
-  isIntraWorkspaceLimitEntitled: Boolean!
 }
 
 type UsageQuotaOperatorOnlyScope {
@@ -5898,7 +5897,6 @@ input UsageQuotaScopeInput {
 type UsageQuotaWithConsumption {
   consumedValue: BigInt
   id: UUID!
-  isEnforced: Boolean!
   limitValue: BigInt!
   operationType: UsageOperationType!
   periodEnd: DateTime

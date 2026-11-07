@@ -15391,9 +15391,6 @@ export default {
             "hasAllowancePeriod": [
                 4
             ],
-            "isIntraWorkspaceLimitEntitled": [
-                4
-            ],
             "__typename": [
                 1
             ]
@@ -15458,9 +15455,6 @@ export default {
             ],
             "id": [
                 542
-            ],
-            "isEnforced": [
-                4
             ],
             "limitValue": [
                 100

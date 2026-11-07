@@ -1,15 +1,12 @@
 import { type Meta, type StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { SettingsRolesList } from '@/settings/roles/components/SettingsRolesList';
 import { settingsPersistedRoleFamilyState } from '@/settings/roles/states/settingsPersistedRoleFamilyState';
 import { settingsRoleIdsState } from '@/settings/roles/states/settingsRoleIdsState';
 import { jotaiStore } from '@/ui/utilities/state/jotai/jotaiStore';
-import { BillingEntitlementKey } from '~/generated-metadata/graphql';
 import { ComponentWithRouterDecorator } from '~/testing/decorators/ComponentWithRouterDecorator';
 import { mockedRoles } from '~/testing/mock-data/generated/metadata/roles/mock-roles-data';
-import { mockCurrentWorkspace } from '~/testing/mock-data/users';
 
 const ROLES = [
   ...mockedRoles,
@@ -93,15 +90,7 @@ export const FilterPanelTogglesStayOpen: Story = {
   },
 };
 
-export const CreateRoleWithCustomRolesEntitlement: Story = {
-  beforeEach: () => {
-    jotaiStore.set(currentWorkspaceState.atom, {
-      ...mockCurrentWorkspace,
-      billingEntitlements: [
-        { key: BillingEntitlementKey.CUSTOM_ROLES, value: true },
-      ],
-    });
-  },
+export const CreateRoleEnabled: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -109,22 +98,5 @@ export const CreateRoleWithCustomRolesEntitlement: Story = {
       await canvas.findByRole('button', { name: 'Create Role' }),
     ).toBeEnabled();
     expect(canvas.queryByText('Organization')).not.toBeInTheDocument();
-  },
-};
-
-export const CreateRoleWithoutCustomRolesEntitlement: Story = {
-  beforeEach: () => {
-    jotaiStore.set(currentWorkspaceState.atom, {
-      ...mockCurrentWorkspace,
-      billingEntitlements: [],
-    });
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    expect(
-      await canvas.findByRole('button', { name: 'Create Role' }),
-    ).toBeDisabled();
-    expect(canvas.getByText('Organization')).toBeVisible();
   },
 };

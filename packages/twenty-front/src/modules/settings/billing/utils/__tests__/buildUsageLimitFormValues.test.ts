@@ -19,7 +19,6 @@ const buildItem = (
   periodUnit: 'month',
   unit: UsageUnit.CREDIT,
   limitValue: 100_000_000,
-  isEnforced: true,
   consumedValue: null,
   remainingValue: null,
   periodStart: null,

@@ -10,7 +10,6 @@ import {
   UsageLimitException,
   UsageLimitExceptionCode,
 } from 'src/engine/core-modules/usage-limit/exceptions/usage-limit.exception';
-import { UsageLimitEntitlementService } from 'src/engine/core-modules/usage-limit/services/usage-limit-entitlement.service';
 import { type FlatUsageLimit } from 'src/engine/core-modules/usage-limit/types/flat-usage-limit.type';
 import { type SpeedBucketOutcome } from 'src/engine/core-modules/usage-limit/types/speed-bucket-outcome.type';
 import { type SpeedBucketRequest } from 'src/engine/core-modules/usage-limit/types/speed-bucket-request.type';
@@ -30,7 +29,6 @@ export class UsageLimitSpeedService {
     private readonly throttlerService: ThrottlerService,
     private readonly workspaceCacheService: WorkspaceCacheService,
     private readonly twentyConfigService: TwentyConfigService,
-    private readonly usageLimitEntitlementService: UsageLimitEntitlementService,
   ) {}
 
   async consumeOrThrow({
@@ -219,12 +217,6 @@ export class UsageLimitSpeedService {
       return [];
     }
 
-    const enforceableLimits =
-      await this.usageLimitEntitlementService.findEnforceableLimits({
-        workspaceId: authContext.workspace.id,
-        limits,
-      });
-
     return buildSpeedBuckets({
       speedLimitDefaults: definition.defaults
         .filter(
@@ -242,7 +234,7 @@ export class UsageLimitSpeedService {
             speedLimitDefaultDefinition.windowMsConfigVariable,
           ),
         })),
-      limits: enforceableLimits,
+      limits,
       authContext,
       resourceType,
       operationType,

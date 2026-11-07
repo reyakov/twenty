@@ -42,7 +42,6 @@ const buildDefinitions = (
       __typename: 'UsageQuotaDefinition',
     },
   ],
-  isIntraWorkspaceLimitEntitled: true,
   hasAllowancePeriod: false,
 });
 

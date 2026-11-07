@@ -5,8 +5,6 @@ import { Injectable } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
 
 import { ApplicationService } from 'src/engine/core-modules/application/application.service';
-import { BillingEntitlementKey } from 'src/engine/core-modules/billing/enums/billing-entitlement-key.enum';
-import { BillingSubscriptionService } from 'src/engine/core-modules/billing/services/billing-subscription.service';
 import { WorkspaceManyOrAllFlatEntityMapsCacheService } from 'src/engine/metadata-modules/flat-entity/services/workspace-many-or-all-flat-entity-maps-cache.service';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { findFlatEntityByIdInFlatEntityMapsOrThrow } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps-or-throw.util';
@@ -40,26 +38,7 @@ export class ValidationRuleService {
     private readonly workspaceMigrationValidateBuildAndRunService: WorkspaceMigrationValidateBuildAndRunService,
     private readonly workspaceManyOrAllFlatEntityMapsCacheService: WorkspaceManyOrAllFlatEntityMapsCacheService,
     private readonly applicationService: ApplicationService,
-    private readonly billingSubscriptionService: BillingSubscriptionService,
   ) {}
-
-  private hasValidationRulesEntitlement(workspaceId: string): Promise<boolean> {
-    return this.billingSubscriptionService.getWorkspaceEntitlementValue(
-      workspaceId,
-      BillingEntitlementKey.VALIDATION_RULES,
-    );
-  }
-
-  private async assertHasValidationRulesEntitlement(
-    workspaceId: string,
-  ): Promise<void> {
-    if (!(await this.hasValidationRulesEntitlement(workspaceId))) {
-      throw new ValidationRuleException(
-        'Validation rules are not included in the workspace plan',
-        ValidationRuleExceptionCode.VALIDATION_RULES_NOT_ENTITLED,
-      );
-    }
-  }
 
   private getFlatMaps(workspaceId: string) {
     return this.workspaceManyOrAllFlatEntityMapsCacheService.getOrRecomputeManyOrAllFlatEntityMaps(
@@ -154,10 +133,6 @@ export class ValidationRuleService {
     objectMetadataId: string;
     workspaceId: string;
   }): Promise<ValidationRuleDTO[]> {
-    if (!(await this.hasValidationRulesEntitlement(workspaceId))) {
-      return [];
-    }
-
     const { flatValidationRuleMaps } = await this.getFlatMaps(workspaceId);
 
     return Object.values(flatValidationRuleMaps.byUniversalIdentifier)
@@ -181,10 +156,6 @@ export class ValidationRuleService {
     fieldMetadataId: string;
     workspaceId: string;
   }): Promise<ValidationRuleDTO[]> {
-    if (!(await this.hasValidationRulesEntitlement(workspaceId))) {
-      return [];
-    }
-
     const {
       flatValidationRuleMaps,
       flatFieldMetadataMaps,
@@ -221,8 +192,6 @@ export class ValidationRuleService {
     objectMetadataId: string;
     workspaceId: string;
   }): Promise<void> {
-    await this.assertHasValidationRulesEntitlement(workspaceId);
-
     const { flatObjectMetadataMaps, flatFieldMetadataMaps } =
       await this.getFlatMaps(workspaceId);
 
@@ -241,8 +210,6 @@ export class ValidationRuleService {
     input: CreateValidationRuleInput;
     workspaceId: string;
   }): Promise<ValidationRuleDTO> {
-    await this.assertHasValidationRulesEntitlement(workspaceId);
-
     const { flatObjectMetadataMaps, flatFieldMetadataMaps } =
       await this.getFlatMaps(workspaceId);
 
@@ -293,8 +260,6 @@ export class ValidationRuleService {
     input: UpdateValidationRuleInput;
     workspaceId: string;
   }): Promise<ValidationRuleDTO> {
-    await this.assertHasValidationRulesEntitlement(workspaceId);
-
     const {
       existingFlatValidationRule,
       flatMaps: { flatObjectMetadataMaps, flatFieldMetadataMaps },
@@ -343,8 +308,6 @@ export class ValidationRuleService {
     id: string;
     workspaceId: string;
   }): Promise<ValidationRuleDTO> {
-    await this.assertHasValidationRulesEntitlement(workspaceId);
-
     const { existingFlatValidationRule } =
       await this.findExistingFlatValidationRuleOrThrow({ id, workspaceId });
 

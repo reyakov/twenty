@@ -17,7 +17,6 @@ import { type UsageQuotaWithConsumption } from '@/settings/billing/types/UsageQu
 import { filterUsageLimitRows } from '@/settings/billing/utils/filterUsageLimitRows';
 import { getUsageLimitRingColor } from '@/settings/billing/utils/getUsageLimitRingColor';
 import { SettingsEmptyPlaceholder } from '@/settings/components/SettingsEmptyPlaceholder';
-import { SettingsNameCellSecondaryLabel } from '@/settings/components/SettingsNameCellSecondaryLabel';
 import { SettingsTableListSection } from '@/settings/components/SettingsTableListSection';
 import { TooltipDelay } from '@/ui/layout/tooltip/constants/TooltipDelay';
 import { type UsageResourceType } from '~/generated-metadata/graphql';
@@ -84,8 +83,6 @@ const NameCell = ({ item }: { item: UsageLimitRow }) => {
   const { t } = useLingui();
   const theme = useTheme();
 
-  const deactivatedAnchorId = `usage-limit-deactivated-${item.id}`;
-
   return (
     <StyledCell>
       <StyledNameIcon>
@@ -96,18 +93,6 @@ const NameCell = ({ item }: { item: UsageLimitRow }) => {
       </StyledNameIcon>
       <StyledNameContainer>
         <StyledName>{item.name}</StyledName>
-        {!item.isEnforced && (
-          <Tooltip
-            content={t`Limits on members, API keys and apps require the Organization plan.`}
-            side="top"
-            delay={TooltipDelay.shortDelay}
-            positionMethod="fixed"
-          >
-            <SettingsNameCellSecondaryLabel id={deactivatedAnchorId}>
-              {t`Deactivated`}
-            </SettingsNameCellSecondaryLabel>
-          </Tooltip>
-        )}
       </StyledNameContainer>
     </StyledCell>
   );

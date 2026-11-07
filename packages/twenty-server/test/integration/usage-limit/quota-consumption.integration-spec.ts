@@ -31,7 +31,6 @@ import { type MetricsService } from 'src/engine/core-modules/metrics/metrics.ser
 import { MetricsKeys } from 'src/engine/core-modules/metrics/types/metrics-keys.type';
 import { type TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { type CreateUsageLimitInput } from 'src/engine/core-modules/usage-limit/dtos/create-usage-limit.input';
-import { type UsageLimitEntitlementService } from 'src/engine/core-modules/usage-limit/services/usage-limit-entitlement.service';
 import { type UsageLimitQuotaService } from 'src/engine/core-modules/usage-limit/services/usage-limit-quota.service';
 import { type UsageLimitService } from 'src/engine/core-modules/usage-limit/services/usage-limit.service';
 import { type PeriodUnit } from 'src/engine/core-modules/usage-limit/types/period-unit.type';
@@ -88,7 +87,6 @@ const USAGE_QUOTAS_WITH_CONSUMPTION = gql`
     usageQuotasWithConsumption {
       id
       unit
-      isEnforced
       consumedValue
     }
   }
@@ -386,7 +384,7 @@ describe('Usage quota consumption', () => {
     );
 
     jestExpectToBeDefined(usageQuota);
-    expect(usageQuota).toMatchObject({ unit, isEnforced: true });
+    expect(usageQuota).toMatchObject({ unit });
 
     return usageQuota.consumedValue;
   };
@@ -690,56 +688,6 @@ describe('Usage quota consumption', () => {
             limitValue: enforcedLimitValue,
           });
         } finally {
-          await deleteWeekCreditQuota(usageLimit.id);
-        }
-      },
-      EXECUTION_TIMEOUT_MS,
-    );
-
-    it(
-      're-warms a limit from ClickHouse once an operator edit makes it enforced again',
-      async () => {
-        const entitlementSpy = jest
-          .spyOn(
-            getAppProviderByClassName<UsageLimitEntitlementService>(
-              'UsageLimitEntitlementService',
-            ),
-            'isIntraWorkspaceLimitEntitled',
-          )
-          .mockResolvedValue(true);
-        const usageLimit = await createWeekCreditQuota({ isOperator: false });
-        const usageEventRowCount = await countUsageEventRows();
-
-        try {
-          await chargeRun({
-            spenderId: logicFunctionId,
-            creditsUsedMicro: 100,
-          });
-
-          const enforcedLimitValue = (await readWeekCreditCounter()) + 300;
-
-          entitlementSpy.mockResolvedValue(false);
-          await chargeRun({
-            spenderId: logicFunctionId,
-            creditsUsedMicro: 600,
-          });
-
-          expect(await readWeekCreditCounter()).toBe(enforcedLimitValue - 300);
-
-          await waitForUsageEventRows(usageEventRowCount + 2);
-
-          await updateWeekCreditQuota(usageLimit.id, {
-            limitValue: enforcedLimitValue,
-          });
-
-          expect(
-            await findRunRefusal({ spenderId: logicFunctionId, costMicro: 0 }),
-          ).toMatchObject({
-            exhaustedKind: 'limit',
-            limitValue: enforcedLimitValue,
-          });
-        } finally {
-          entitlementSpy.mockRestore();
           await deleteWeekCreditQuota(usageLimit.id);
         }
       },

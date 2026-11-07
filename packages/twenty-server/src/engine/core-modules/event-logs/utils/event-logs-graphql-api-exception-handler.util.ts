@@ -16,7 +16,6 @@ export const eventLogsGraphqlApiExceptionHandler = (
 ) => {
   switch (exception.code) {
     case EventLogsExceptionCode.CLICKHOUSE_NOT_CONFIGURED:
-    case EventLogsExceptionCode.NO_ENTITLEMENT:
       throw new ForbiddenError(exception);
     case EventLogsExceptionCode.INVALID_FIELD_FILTER:
     case EventLogsExceptionCode.INVALID_TABLE:

@@ -7,8 +7,6 @@ import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorato
 import { CreateUnsubscribeTopicInput } from 'src/engine/core-modules/emailing-domain/dtos/create-unsubscribe-topic.input';
 import { UnsubscribeTopicDTO } from 'src/engine/core-modules/emailing-domain/dtos/unsubscribe-topic.dto';
 import { UpdateUnsubscribeTopicInput } from 'src/engine/core-modules/emailing-domain/dtos/update-unsubscribe-topic.input';
-import { EmailGroupAccessGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/email-group-access-graphql-api-exception.filter';
-import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
@@ -32,24 +30,18 @@ import { AccessPolicyGuard } from 'src/engine/guards/access-policy.guard';
     requiredPermissionFlags: [PermissionFlagType.WORKSPACE],
   }),
 )
-@UseFilters(
-  EmailGroupAccessGraphqlApiExceptionFilter,
-  AuthGraphqlApiExceptionFilter,
-)
+@UseFilters(AuthGraphqlApiExceptionFilter)
 @UsePipes(ResolverValidationPipe)
 @MetadataResolver(() => UnsubscribeTopicDTO)
 export class UnsubscribeTopicResolver {
   constructor(
     private readonly unsubscribeTopicService: UnsubscribeTopicService,
-    private readonly emailGroupAccessService: EmailGroupAccessService,
   ) {}
 
   @Query(() => [UnsubscribeTopicDTO])
   async unsubscribeTopics(
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
   ): Promise<UnsubscribeTopicDTO[]> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     return this.unsubscribeTopicService.getUnsubscribeTopics(
       currentWorkspace.id,
     );
@@ -60,8 +52,6 @@ export class UnsubscribeTopicResolver {
     @Args('input') input: CreateUnsubscribeTopicInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
   ): Promise<UnsubscribeTopicDTO> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     return this.unsubscribeTopicService.createUnsubscribeTopic(
       currentWorkspace.id,
       input,
@@ -73,8 +63,6 @@ export class UnsubscribeTopicResolver {
     @Args('input') input: UpdateUnsubscribeTopicInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
   ): Promise<UnsubscribeTopicDTO> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     return this.unsubscribeTopicService.updateUnsubscribeTopic(
       currentWorkspace.id,
       input,
@@ -86,8 +74,6 @@ export class UnsubscribeTopicResolver {
     @Args('id') id: string,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
   ): Promise<boolean> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     await this.unsubscribeTopicService.deleteUnsubscribeTopic(
       currentWorkspace.id,
       id,

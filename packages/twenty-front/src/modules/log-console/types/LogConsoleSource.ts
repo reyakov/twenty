@@ -23,7 +23,6 @@ export type LogConsoleSource = {
   table: EventLogTable;
   fieldFilters?: EventLogFieldFilterInput[];
   filterFields?: LogConsoleFilterField[];
-  requiresAuditLogs: boolean;
   columns: LogConsoleColumn[];
   detailFields: LogConsoleDetailField[];
   idFields: LogConsoleIdField[];

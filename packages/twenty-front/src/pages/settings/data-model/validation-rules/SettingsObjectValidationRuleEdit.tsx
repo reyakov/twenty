@@ -3,12 +3,10 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { useFilteredObjectMetadataItems } from '@/object-metadata/hooks/useFilteredObjectMetadataItems';
 import { SettingsValidationRuleEditForm } from '@/validation-rules/components/SettingsValidationRuleEditForm';
-import { useHasValidationRulesEntitlement } from '@/validation-rules/hooks/useHasValidationRulesEntitlement';
 import { useValidationRules } from '@/validation-rules/hooks/useValidationRules';
 import { NotFound } from '~/pages/not-found/NotFound';
 
 export const SettingsObjectValidationRuleEdit = () => {
-  const hasValidationRulesEntitlement = useHasValidationRulesEntitlement();
   const { objectNamePlural = '', validationRuleId = '' } = useParams();
   const { findObjectMetadataItemByNamePlural } =
     useFilteredObjectMetadataItems();
@@ -20,7 +18,7 @@ export const SettingsObjectValidationRuleEdit = () => {
     objectMetadataId: objectMetadataItem?.id ?? '',
   });
 
-  if (!hasValidationRulesEntitlement || !isDefined(objectMetadataItem)) {
+  if (!isDefined(objectMetadataItem)) {
     return <NotFound />;
   }
 

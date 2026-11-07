@@ -4,7 +4,6 @@ import { assertUnreachable } from 'twenty-shared/utils';
 
 import {
   ConflictError,
-  ForbiddenError,
   NotFoundError,
   UserInputError,
 } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
@@ -23,8 +22,6 @@ export const ssoGraphqlApiExceptionHandler = (exception: SsoException) => {
     case SsoExceptionCode.INVALID_ISSUER_URL:
     case SsoExceptionCode.INVALID_IDP_TYPE:
       throw new UserInputError(exception);
-    case SsoExceptionCode.SSO_DISABLE:
-      throw new ForbiddenError(exception);
     case SsoExceptionCode.UNKNOWN_SSO_CONFIGURATION_ERROR:
       throw exception;
     default: {

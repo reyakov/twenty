@@ -18,7 +18,6 @@ const meta: Meta<typeof SettingsBillingLimitSpenderSelect> = {
       'application',
       'agent',
     ],
-    isIntraWorkspaceLimitEntitled: true,
     spenderType: 'workspace',
     spenderId: '',
     onChange: () => {},
@@ -32,27 +31,6 @@ export const WorkspaceWide: Story = {};
 
 export const AllUsers: Story = {
   args: { spenderType: 'userWorkspace', spenderId: '' },
-};
-
-export const WorkspaceOnlyPlan: Story = {
-  args: { isIntraWorkspaceLimitEntitled: false, onChange: fn() },
-  play: async ({ canvasElement, args }) => {
-    const body = within(canvasElement.ownerDocument.body);
-
-    await userEvent.click(within(canvasElement).getByRole('button'));
-    const popup = await body.findByRole('dialog', { name: 'Spender' });
-
-    expect(within(popup).getAllByLabelText('Organization')).toHaveLength(3);
-    await userEvent.click(within(popup).getByText('User'));
-    expect(
-      within(popup).queryByRole('button', { name: 'All users' }),
-    ).not.toBeInTheDocument();
-    expect(args.onChange).not.toHaveBeenCalled();
-    expect(
-      within(popup).getByRole('link', { name: 'Upgrade to Organization' }),
-    ).toHaveAttribute('href', '/settings/billing/plans');
-    await userEvent.keyboard('{Escape}');
-  },
 };
 
 export const ReadOnly: Story = {

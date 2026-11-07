@@ -50,7 +50,6 @@ import { DnsManagerService } from 'src/engine/core-modules/dns-manager/services/
 import { CustomDomainManagerService } from 'src/engine/core-modules/domain/custom-domain-manager/services/custom-domain-manager.service';
 import { SubdomainManagerService } from 'src/engine/core-modules/domain/subdomain-manager/services/subdomain-manager.service';
 import { EmailingDomainEntity } from 'src/engine/core-modules/emailing-domain/emailing-domain.entity';
-import { EventLogRetentionService } from 'src/engine/core-modules/event-logs/retention/services/event-log-retention.service';
 import {
   EmailingDomainWorkspaceCleanupJob,
   type EmailingDomainWorkspaceCleanupJobData,
@@ -206,7 +205,6 @@ export class WorkspaceService {
     private readonly applicationUninstallService: ApplicationUninstallService,
     @Inject(LOGIC_FUNCTION_DRIVER_FACTORY_TOKEN)
     private readonly logicFunctionDriverFactory: LogicFunctionDriverFactory,
-    private readonly eventLogRetentionService: EventLogRetentionService,
     private readonly roleAssignmentValidationService: RoleAssignmentValidationService,
   ) {}
 
@@ -456,15 +454,6 @@ export class WorkspaceService {
     ) {
       await this.subdomainManagerService.validateSubdomainOrThrow(
         payload.subdomain,
-      );
-    }
-
-    if (
-      isDefined(payload.eventLogRetentionDays) &&
-      workspace.eventLogRetentionDays !== payload.eventLogRetentionDays
-    ) {
-      await this.eventLogRetentionService.validateRetentionUpdateOrThrow(
-        workspace.id,
       );
     }
 

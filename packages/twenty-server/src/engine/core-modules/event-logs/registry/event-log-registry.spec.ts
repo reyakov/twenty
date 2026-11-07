@@ -26,18 +26,6 @@ describe('event-log registry', () => {
     );
   });
 
-  it('gates every table except application logs behind an entitlement', () => {
-    expect(
-      EVENT_LOG_TYPES[EventLogTable.APPLICATION_LOG].requiresEntitlement,
-    ).toBeNull();
-    expect(
-      EVENT_LOG_TYPES[EventLogTable.WORKSPACE_EVENT].requiresEntitlement,
-    ).not.toBeNull();
-    expect(
-      EVENT_LOG_TYPES[EventLogTable.USAGE_EVENT].requiresEntitlement,
-    ).not.toBeNull();
-  });
-
   describe('normalize', () => {
     const timestamp = '2026-01-01 00:00:00.000';
 

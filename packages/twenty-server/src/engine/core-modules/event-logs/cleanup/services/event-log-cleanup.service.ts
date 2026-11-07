@@ -73,8 +73,7 @@ export class EventLogCleanupService {
 
     for (const workspace of workspaces) {
       const retentionInHours =
-        await this.eventLogRetentionService.getRetentionInHours({
-          workspaceId: workspace.id,
+        this.eventLogRetentionService.getRetentionInHours({
           workspaceRetentionInDays: workspace.eventLogRetentionDays,
         });
 

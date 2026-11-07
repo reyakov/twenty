@@ -8,15 +8,6 @@ import {
   AdminPanelException,
   AdminPanelExceptionCode,
 } from 'src/engine/core-modules/admin-panel/admin-panel.exception';
-import { MAX_SEATS_WITHOUT_ENTERPRISE_KEY } from 'src/engine/core-modules/enterprise/constants/max-seats-without-organization-key.constant';
-import {
-  EnterpriseException,
-  EnterpriseExceptionCode,
-} from 'src/engine/core-modules/enterprise/enterprise.exception';
-import {
-  type CustomAiProviderAccess,
-  CustomAiProviderAccessService,
-} from 'src/engine/core-modules/enterprise/services/custom-ai-provider-access.service';
 import { UserInputError } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
 import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { AiModelRegistryService } from 'src/engine/metadata-modules/ai/ai-models/services/ai-model-registry.service';
@@ -32,28 +23,9 @@ const PROVIDER_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 export class AdminPanelAiProviderService {
   constructor(
     private readonly twentyConfigService: TwentyConfigService,
-    private readonly customAiProviderAccessService: CustomAiProviderAccessService,
     private readonly aiModelRegistryService: AiModelRegistryService,
     private readonly defaultAiCatalogService: DefaultAiCatalogService,
   ) {}
-
-  // Recomputed rather than cached so the admin panel is exact and model resolution refreshed
-  async getCustomAiProviderAccess(): Promise<CustomAiProviderAccess> {
-    return this.customAiProviderAccessService.computeAccess();
-  }
-
-  private async assertCustomAiProviderAccess(): Promise<void> {
-    const { hasAccess, seatCount } = await this.getCustomAiProviderAccess();
-
-    if (hasAccess) {
-      return;
-    }
-
-    throw new EnterpriseException(
-      `Custom AI providers require a valid enterprise key above ${MAX_SEATS_WITHOUT_ENTERPRISE_KEY} seats (this instance has ${seatCount})`,
-      EnterpriseExceptionCode.ENTERPRISE_SEAT_THRESHOLD_EXCEEDED,
-    );
-  }
 
   getMaskedProviders(): Record<string, unknown> {
     const providers =
@@ -98,8 +70,6 @@ export class AdminPanelAiProviderService {
     providerName: string;
     providerConfig: unknown;
   }): Promise<boolean> {
-    await this.assertCustomAiProviderAccess();
-
     if (!PROVIDER_NAME_PATTERN.test(providerName)) {
       throw new UserInputError('Invalid provider name');
     }
@@ -156,8 +126,6 @@ export class AdminPanelAiProviderService {
     providerName: string;
     modelConfig: unknown;
   }): Promise<boolean> {
-    await this.assertCustomAiProviderAccess();
-
     const validatedModelConfig =
       aiProviderModelConfigSchema.safeParse(modelConfig);
 

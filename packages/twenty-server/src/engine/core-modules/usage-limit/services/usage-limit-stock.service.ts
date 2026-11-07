@@ -15,7 +15,6 @@ import {
   UsageLimitExceptionCode,
 } from 'src/engine/core-modules/usage-limit/exceptions/usage-limit.exception';
 import { UsageLimitDefaultValueService } from 'src/engine/core-modules/usage-limit/services/usage-limit-default-value.service';
-import { UsageLimitEntitlementService } from 'src/engine/core-modules/usage-limit/services/usage-limit-entitlement.service';
 import { type ComputeUsedStock } from 'src/engine/core-modules/usage-limit/types/compute-used-stock.type';
 import { type FlatUsageLimit } from 'src/engine/core-modules/usage-limit/types/flat-usage-limit.type';
 import { type StockCost } from 'src/engine/core-modules/usage-limit/types/stock-cost.type';
@@ -23,7 +22,6 @@ import { type StockCounter } from 'src/engine/core-modules/usage-limit/types/sto
 import { type StockLimitDefault } from 'src/engine/core-modules/usage-limit/types/stock-limit-default.type';
 import { type StockResourceType } from 'src/engine/core-modules/usage-limit/types/stock-resource-type.type';
 import { buildConsumeScriptArguments } from 'src/engine/core-modules/usage-limit/utils/build-consume-script-arguments.util';
-import { buildIntraWorkspaceStockCounterKeys } from 'src/engine/core-modules/usage-limit/utils/build-intra-workspace-stock-counter-keys.util';
 import { buildReleaseScriptArguments } from 'src/engine/core-modules/usage-limit/utils/build-release-script-arguments.util';
 import { buildStockCounter } from 'src/engine/core-modules/usage-limit/utils/build-stock-counter.util';
 import { buildStockCounters } from 'src/engine/core-modules/usage-limit/utils/build-stock-counters.util';
@@ -57,7 +55,6 @@ export class UsageLimitStockService {
     @InjectCacheStorage(CacheStorageNamespace.EngineUsageLimit)
     private readonly cacheStorage: CacheStorageService,
     private readonly workspaceCacheService: WorkspaceCacheService,
-    private readonly usageLimitEntitlementService: UsageLimitEntitlementService,
     private readonly usageLimitDefaultValueService: UsageLimitDefaultValueService,
     private readonly metricsService: MetricsService,
     private readonly twentyConfigService: TwentyConfigService,
@@ -161,22 +158,6 @@ export class UsageLimitStockService {
     );
   }
 
-  async dropIntraWorkspaceLimitCounters(workspaceId: string): Promise<void> {
-    const { usageLimits } = await this.workspaceCacheService.getOrRecompute(
-      workspaceId,
-      ['usageLimits'],
-    );
-
-    await this.cacheStorage.mdel(
-      buildIntraWorkspaceStockCounterKeys({
-        workspaceId,
-        limits: Object.values(usageLimits.byResourceType).flatMap(
-          (limits) => limits ?? [],
-        ),
-      }),
-    );
-  }
-
   async invalidateStock(args: StockArgs): Promise<void> {
     try {
       const counters = await this.buildCounters(args);
@@ -236,20 +217,16 @@ export class UsageLimitStockService {
       ['usageLimits'],
     );
 
-    const enforceableLimits =
-      await this.usageLimitEntitlementService.findEnforceableLimits({
-        workspaceId,
-        limits: (usageLimits.byResourceType[resourceType] ?? []).filter(
-          isStockLimit,
-        ),
-      });
+    const stockLimits = (usageLimits.byResourceType[resourceType] ?? []).filter(
+      isStockLimit,
+    );
 
     return buildStockCounters({
       workspaceId,
       resourceType,
       operationType,
       spenders,
-      limits: enforceableLimits,
+      limits: stockLimits,
       stockLimitDefaults: await this.buildStockLimitDefaults({
         workspaceId,
         resourceType,

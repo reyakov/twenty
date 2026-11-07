@@ -10,21 +10,17 @@ import { Card } from 'twenty-ui/primitives/surfaces';
 import { themeCssVariables } from 'twenty-ui/theme';
 
 import { getAiModelTierLabel } from '@/ai/utils/getAiModelTierLabel';
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { useClientConfig } from '@/client-config/hooks/useClientConfig';
-import { billingState } from '@/client-config/states/billingState';
 import { SettingsAdminAiProviderListCard } from '@/settings/admin-panel/ai/components/SettingsAdminAiProviderListCard';
 import { AI_PROVIDER_SOURCE } from '@/settings/admin-panel/ai/constants/AiProviderSource';
 import { SET_ADMIN_DEFAULT_AI_MODEL } from '@/settings/admin-panel/ai/graphql/mutations/setAdminDefaultAiModel';
 import { GET_ADMIN_AI_MODELS } from '@/settings/admin-panel/ai/graphql/queries/getAdminAiModels';
 import { GET_ADMIN_AI_USAGE_BY_WORKSPACE } from '@/settings/admin-panel/ai/graphql/queries/getAdminAiUsageByWorkspace';
 import { GET_AI_PROVIDERS } from '@/settings/admin-panel/ai/graphql/queries/getAiProviders';
-import { useCustomAiProviderAccess } from '@/settings/admin-panel/ai/hooks/useCustomAiProviderAccess';
 import { type GetAiProvidersResult } from '@/settings/admin-panel/ai/types/GetAiProvidersResult';
 import { parseProviderItems } from '@/settings/admin-panel/ai/utils/parseProviderItems';
 import { useApolloAdminClient } from '@/settings/admin-panel/apollo/hooks/useApolloAdminClient';
 import { AiModelPinSelect } from '@/ai/components/AiModelPinSelect';
-import { SettingsEnterpriseFeatureGateCard } from '@/settings/components/SettingsEnterpriseFeatureGateCard';
 import { SettingsOptionCardContentSelect } from '@/settings/components/SettingsOptions/SettingsOptionCardContentSelect';
 import { StyledSettingsSelectGroup } from '@/settings/components/SettingsOptions/StyledSettingsSelectGroup';
 import { SettingsSectionSkeletonLoader } from '@/settings/components/SettingsSectionSkeletonLoader';
@@ -38,13 +34,11 @@ import { Table } from '@/ui/layout/table/components/Table';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableHeader } from '@/ui/layout/table/components/TableHeader';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
-import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import {
   type AdminAiModelConfig,
   type AdminAiModelTierDefault,
   AiModelTier as GraphqlAiModelTier,
 } from '~/generated-admin/graphql';
-import { OrganizationAdornment } from '@/settings/enterprise/components/OrganizationAdornment';
 import { useLingui } from '@lingui/react/macro';
 
 const USAGE_TABLE_GRID_TEMPLATE_COLUMNS = '1fr 120px';
@@ -61,17 +55,6 @@ export const SettingsAdminAI = () => {
   const { enqueueToast } = useToast();
   const { refetch: refetchClientConfig } = useClientConfig();
   const { formatUsageValue } = useUsageValueFormatter();
-  const currentWorkspace = useAtomStateValue(currentWorkspaceState);
-  const billing = useAtomStateValue(billingState);
-  const isBillingEnabled = billing?.isBillingEnabled ?? false;
-  const hasEnterpriseAccess =
-    isBillingEnabled ||
-    currentWorkspace?.hasValidEnterpriseValidityToken === true;
-  const {
-    hasAccess: hasCustomAiProviderAccess,
-    gateDescription: customAiProviderGateDescription,
-    tooltipContent: customAiProviderTooltipContent,
-  } = useCustomAiProviderAccess();
   const [usagePeriod, setUsagePeriod] = useState<PeriodPreset>('30d');
   const periodOptions = getPeriodOptions();
   const usageDates = getPeriodDates(usagePeriod);
@@ -100,7 +83,6 @@ export const SettingsAdminAI = () => {
       periodStart: usageDates.periodStart,
       periodEnd: usageDates.periodEnd,
     },
-    skip: !hasEnterpriseAccess,
   });
 
   const effectiveUsageData = usageData ?? previousUsageData;
@@ -176,25 +158,9 @@ export const SettingsAdminAI = () => {
         <Section.Header
           title={t`Custom Providers`}
           description={t`Add custom endpoints, private gateways, or additional regions.`}
-          actions={
-            <OrganizationAdornment
-              tooltipContent={customAiProviderTooltipContent}
-            />
-          }
         />
 
-        <SettingsAdminAiProviderListCard
-          providers={customProviders}
-          showAddButton={hasCustomAiProviderAccess}
-        />
-
-        {!hasCustomAiProviderAccess && (
-          <SettingsEnterpriseFeatureGateCard
-            title={t`Organization feature`}
-            description={customAiProviderGateDescription}
-            buttonTitle={t`Activate`}
-          />
-        )}
+        <SettingsAdminAiProviderListCard providers={customProviders} />
       </Section.Root>
 
       {enabledModels.length > 0 && (
@@ -240,62 +206,50 @@ export const SettingsAdminAI = () => {
           title={t`AI Usage by Workspace`}
           description={t`AI consumption across all workspaces.`}
           actions={
-            hasEnterpriseAccess ? (
-              <Select
-                dropdownId="admin-ai-usage-period"
-                value={usagePeriod}
-                options={periodOptions}
-                onChange={setUsagePeriod}
-                needIconCheck
-                selectSizeVariant="small"
-              />
-            ) : (
-              <OrganizationAdornment />
-            )
+            <Select
+              dropdownId="admin-ai-usage-period"
+              value={usagePeriod}
+              options={periodOptions}
+              onChange={setUsagePeriod}
+              needIconCheck
+              selectSizeVariant="small"
+            />
           }
         />
-        {hasEnterpriseAccess ? (
-          usageByWorkspace.length > 0 ? (
-            <Table>
-              <TableRow gridTemplateColumns={USAGE_TABLE_GRID_TEMPLATE_COLUMNS}>
-                <TableHeader>{t`Workspace`}</TableHeader>
-                <TableHeader align="right">{t`Usage`}</TableHeader>
-              </TableRow>
-              {usageByWorkspace.map((item) => (
-                <TableRow
-                  key={item.key}
-                  gridTemplateColumns={USAGE_TABLE_GRID_TEMPLATE_COLUMNS}
-                  to={getSettingsPath(SettingsPath.AdminPanelWorkspaceDetail, {
-                    workspaceId: item.key,
-                  })}
-                >
-                  <TableCell color={themeCssVariables.font.color.primary}>
-                    {item.label ?? item.key}
-                  </TableCell>
-                  <TableCell align="right">
-                    {formatUsageValue(item.creditsUsed)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </Table>
-          ) : (
-            <Card.Root>
-              <TableRow gridTemplateColumns="1fr">
-                <TableCell
-                  color={themeCssVariables.font.color.tertiary}
-                  align="center"
-                >
-                  {t`No AI usage data recorded yet.`}
+        {usageByWorkspace.length > 0 ? (
+          <Table>
+            <TableRow gridTemplateColumns={USAGE_TABLE_GRID_TEMPLATE_COLUMNS}>
+              <TableHeader>{t`Workspace`}</TableHeader>
+              <TableHeader align="right">{t`Usage`}</TableHeader>
+            </TableRow>
+            {usageByWorkspace.map((item) => (
+              <TableRow
+                key={item.key}
+                gridTemplateColumns={USAGE_TABLE_GRID_TEMPLATE_COLUMNS}
+                to={getSettingsPath(SettingsPath.AdminPanelWorkspaceDetail, {
+                  workspaceId: item.key,
+                })}
+              >
+                <TableCell color={themeCssVariables.font.color.primary}>
+                  {item.label ?? item.key}
+                </TableCell>
+                <TableCell align="right">
+                  {formatUsageValue(item.creditsUsed)}
                 </TableCell>
               </TableRow>
-            </Card.Root>
-          )
+            ))}
+          </Table>
         ) : (
-          <SettingsEnterpriseFeatureGateCard
-            title={t`Organization feature`}
-            description={t`AI usage analytics across workspaces is available with an Organization key.`}
-            buttonTitle={t`Activate`}
-          />
+          <Card.Root>
+            <TableRow gridTemplateColumns="1fr">
+              <TableCell
+                color={themeCssVariables.font.color.tertiary}
+                align="center"
+              >
+                {t`No AI usage data recorded yet.`}
+              </TableCell>
+            </TableRow>
+          </Card.Root>
         )}
       </Section.Root>
     </>

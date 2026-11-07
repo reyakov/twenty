@@ -28,7 +28,6 @@ import {
   resolveApplicationMonitoringPeriod,
 } from 'src/engine/core-modules/application/application-monitoring/utils/resolve-application-monitoring-period.util';
 import { ApplicationRegistrationService } from 'src/engine/core-modules/application/application-registration/application-registration.service';
-import { EventLogRetentionService } from 'src/engine/core-modules/event-logs/retention/services/event-log-retention.service';
 import { FileUrlService } from 'src/engine/core-modules/file/file-url/file-url.service';
 import { UsageAnalyticsService } from 'src/engine/core-modules/usage/services/usage-analytics.service';
 import { listDeclaredBillingChargeNames } from 'src/engine/core-modules/usage/utils/list-declared-billing-charge-names.util';
@@ -55,7 +54,6 @@ export class ApplicationMonitoringService {
 
   constructor(
     private readonly clickHouseService: ClickHouseService,
-    private readonly eventLogRetentionService: EventLogRetentionService,
     private readonly applicationRegistrationService: ApplicationRegistrationService,
     private readonly usageAnalyticsService: UsageAnalyticsService,
     private readonly fileUrlService: FileUrlService,
@@ -123,7 +121,6 @@ export class ApplicationMonitoringService {
 
   private async resolveQueryParams({
     applicationRegistrationId,
-    viewerWorkspaceId,
     periodStart,
     periodEnd,
     workspaceId,
@@ -132,12 +129,7 @@ export class ApplicationMonitoringService {
     period: ApplicationMonitoringPeriod;
     lookbackInHours: number;
   }> {
-    const lookbackInHours = getApplicationMonitoringLookbackInHours({
-      hasAuditLogsEntitlement:
-        await this.eventLogRetentionService.hasAuditLogsEntitlement(
-          viewerWorkspaceId,
-        ),
-    });
+    const lookbackInHours = getApplicationMonitoringLookbackInHours();
 
     const period = resolveApplicationMonitoringPeriod({
       periodStart,

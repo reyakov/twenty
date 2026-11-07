@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { BillingModule } from 'src/engine/core-modules/billing/billing.module';
 import { DnsManagerModule } from 'src/engine/core-modules/dns-manager/dns-manager.module';
 import { CheckEmailingDomainVerificationCronCommand } from 'src/engine/core-modules/emailing-domain/crons/commands/check-emailing-domain-verification.cron.command';
 import { CheckEmailingDomainVerificationCronJob } from 'src/engine/core-modules/emailing-domain/crons/jobs/check-emailing-domain-verification.cron.job';
@@ -15,7 +14,6 @@ import { AwsSesSendEmailService } from 'src/engine/core-modules/emailing-domain/
 import { EmailingDomainDriverFactory } from 'src/engine/core-modules/emailing-domain/drivers/emailing-domain-driver.factory';
 import { LogEmailingDomainDriver } from 'src/engine/core-modules/emailing-domain/drivers/log/services/log-emailing-domain-driver.service';
 import { ResendApiClientService } from 'src/engine/core-modules/emailing-domain/drivers/resend/services/resend-api-client.service';
-import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
 import { EmailingDomainEntity } from 'src/engine/core-modules/emailing-domain/emailing-domain.entity';
 import { EmailingDomainResolver } from 'src/engine/core-modules/emailing-domain/emailing-domain.resolver';
 import { EmailingDomainWorkspaceCleanupJob } from 'src/engine/core-modules/emailing-domain/jobs/emailing-domain-workspace-cleanup.job';
@@ -25,7 +23,6 @@ import { UnsubscribeContentService } from 'src/engine/core-modules/emailing-doma
 import { DmarcRecordService } from 'src/engine/core-modules/emailing-domain/services/dmarc-record.service';
 import { UnsubscribeHostnameService } from 'src/engine/core-modules/emailing-domain/services/unsubscribe-hostname.service';
 import { UnsubscribeTokenService } from 'src/engine/core-modules/emailing-domain/services/unsubscribe-token.service';
-import { EnterpriseModule } from 'src/engine/core-modules/enterprise/enterprise.module';
 import { PermissionsModule } from 'src/engine/permissions/permissions.module';
 import { SecretEncryptionModule } from 'src/engine/core-modules/secret-encryption/secret-encryption.module';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
@@ -37,21 +34,17 @@ import { provideWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspac
     PermissionsModule,
     DnsManagerModule,
     SecretEncryptionModule,
-    BillingModule,
-    EnterpriseModule,
   ],
   exports: [
     EmailingDomainService,
     EmailingDomainTenantStatusService,
     EmailingDomainDriverFactory,
     UnsubscribeTokenService,
-    EmailGroupAccessService,
     CheckEmailingDomainVerificationCronCommand,
   ],
   providers: [
     CheckEmailingDomainVerificationCronCommand,
     CheckEmailingDomainVerificationCronJob,
-    EmailGroupAccessService,
     EmailingDomainService,
     EmailingDomainTenantStatusService,
     UnsubscribeTokenService,

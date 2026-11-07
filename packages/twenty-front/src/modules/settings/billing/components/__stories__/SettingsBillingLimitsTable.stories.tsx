@@ -24,7 +24,6 @@ const buildQuota = (
   periodUnit: 'month',
   unit: UsageUnit.CREDIT,
   limitValue: 100_000_000,
-  isEnforced: true,
   consumedValue: 23_860_000,
   remainingValue: 76_140_000,
   periodStart: '2026-09-01T00:00:00.000Z',
@@ -42,7 +41,6 @@ const CUSTOM_USER_QUOTA = buildQuota({
   spenderType: 'userWorkspace',
   spenderId: 'a1b2c3d4-0000-0000-0000-000000000000',
   spenderLabel: 'Tim Apple',
-  isEnforced: false,
 });
 
 const LOGIC_FUNCTION_RUNS_QUOTA = buildQuota({
@@ -84,18 +82,6 @@ export const Default: Story = {
     });
 
     await expect(logicFunctionRunsRing).toHaveAttribute('aria-valuenow', '98');
-
-    await userEvent.hover(await canvas.findByText('Deactivated'));
-
-    const tooltip = await within(canvasElement.ownerDocument.body).findByRole(
-      'tooltip',
-      {},
-      { timeout: 2000 },
-    );
-
-    await waitFor(() =>
-      expect(tooltip).toHaveTextContent('require the Organization plan'),
-    );
   },
 };
 

@@ -9,7 +9,6 @@ import {
 } from 'src/engine/permissions/permissions.exception';
 import { findFlatEntityByIdInFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/utils/find-flat-entity-by-id-in-flat-entity-maps.util';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
-import { validateFlatRoleTargetRoleIsEntitled } from 'src/engine/workspace-manager/workspace-migration/workspace-migration-builder/validators/utils/validate-flat-role-target-role-is-entitled.util';
 
 @Injectable()
 export class RoleAssignmentValidationService {
@@ -22,11 +21,10 @@ export class RoleAssignmentValidationService {
     roleId: string;
     workspaceId: string;
   }): Promise<void> {
-    const { flatRoleMaps, billingEntitlements } =
-      await this.workspaceCacheService.getOrRecompute(workspaceId, [
-        'flatRoleMaps',
-        'billingEntitlements',
-      ]);
+    const { flatRoleMaps } = await this.workspaceCacheService.getOrRecompute(
+      workspaceId,
+      ['flatRoleMaps'],
+    );
 
     const role = findFlatEntityByIdInFlatEntityMaps({
       flatEntityId: roleId,
@@ -44,21 +42,6 @@ export class RoleAssignmentValidationService {
       throw new PermissionsException(
         PermissionsExceptionMessage.ROLE_CANNOT_BE_ASSIGNED_TO_USERS,
         PermissionsExceptionCode.ROLE_CANNOT_BE_ASSIGNED_TO_USERS,
-      );
-    }
-
-    const entitlementError = validateFlatRoleTargetRoleIsEntitled({
-      flatRole: role,
-      flatRoleTarget: { agentUniversalIdentifier: null },
-      billingEntitlements,
-      buildOptions: { isSystemBuild: false },
-    });
-
-    if (isDefined(entitlementError)) {
-      throw new PermissionsException(
-        entitlementError.message,
-        PermissionsExceptionCode.CUSTOM_ROLES_NOT_ENTITLED,
-        { userFriendlyMessage: entitlementError.userFriendlyMessage },
       );
     }
   }

@@ -13,7 +13,6 @@ import {
 import { NO_BILLING_SUBSCRIPTION } from 'src/engine/core-modules/billing/constants/no-billing-subscription.constant';
 import { BillingCustomerEntity } from 'src/engine/core-modules/billing/entities/billing-customer.entity';
 import { BillingSubscriptionEntity } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
-import { type BillingEntitlementKey } from 'src/engine/core-modules/billing/enums/billing-entitlement-key.enum';
 import { type UserCreditsFallback } from 'src/engine/core-modules/billing/enums/billing-user-credits-fallback.enum';
 import { SubscriptionStatus } from 'src/engine/core-modules/billing/enums/billing-subscription-status.enum';
 import { BillingProductService } from 'src/engine/core-modules/billing/services/billing-product.service';
@@ -122,22 +121,6 @@ export class BillingService {
     );
 
     return isDefined(subscription);
-  }
-
-  async hasEntitlement(
-    workspaceId: string,
-    entitlementKey: BillingEntitlementKey,
-  ) {
-    const isBillingEnabled = this.isBillingEnabled();
-
-    if (!isBillingEnabled) {
-      return true;
-    }
-
-    return this.billingSubscriptionService.getWorkspaceEntitlementByKey(
-      workspaceId,
-      entitlementKey,
-    );
   }
 
   async isPayingCustomer(workspaceId: string) {

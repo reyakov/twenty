@@ -9,13 +9,11 @@ import { ResizeHandle } from 'twenty-ui/primitives/layout';
 import {
   IconChevronDown,
   IconChevronUp,
-  IconLock,
   IconMaximize,
   IconMinimize,
 } from 'twenty-ui/icon';
-import { themeCssVariables, useTheme } from 'twenty-ui/theme';
+import { themeCssVariables } from 'twenty-ui/theme';
 
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { isClickHouseConfiguredState } from '@/client-config/states/isClickHouseConfiguredState';
 import { LogConsoleDetailPanel } from '@/log-console/components/LogConsoleDetailPanel';
 import { LogConsoleToggleHotkeyEffect } from '@/log-console/components/LogConsoleToggleHotkeyEffect';
@@ -33,10 +31,7 @@ import { logConsoleDisplayModeState } from '@/log-console/states/logConsoleDispl
 import { logConsoleFiltersState } from '@/log-console/states/logConsoleFiltersState';
 import { logConsoleHeightState } from '@/log-console/states/logConsoleHeightState';
 import { logConsoleSelectedLogState } from '@/log-console/states/logConsoleSelectedLogState';
-import { type LogConsoleSource } from '@/log-console/types/LogConsoleSource';
 import { SettingsEmptyPlaceholder } from '@/settings/components/SettingsEmptyPlaceholder';
-import { SettingsEnterpriseFeatureGateCard } from '@/settings/components/SettingsEnterpriseFeatureGateCard';
-import { SETTINGS_CONTENT_MAX_WIDTH } from '@/settings/constants/SettingsContentMaxWidth';
 import { APP_HEADER_HEIGHT } from '@/ui/layout/constants/AppHeaderHeight';
 import { RootStackingContextZIndices } from '@/ui/layout/constants/RootStackingContextZIndices';
 import { TabList } from '@/ui/layout/tab-list/components/TabList';
@@ -50,8 +45,6 @@ import { useAtomComponentStateValue } from '@/ui/utilities/state/jotai/hooks/use
 import { useAtomState } from '@/ui/utilities/state/jotai/hooks/useAtomState';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
-import { checkIfBillingEntitlementIsEnabledOnWorkspace } from '@/workspace/utils/checkIfBillingEntitlementIsEnabledOnWorkspace';
-import { BillingEntitlementKey } from '~/generated-metadata/graphql';
 
 const LOG_CONSOLE_HEIGHT_CSS_VARIABLE = '--log-console-height';
 
@@ -225,14 +218,6 @@ const subscribeToWindowResize = (onWindowResize: () => void) => {
 
 const getWindowHeight = () => window.innerHeight;
 
-const StyledUpgradeCardContainer = styled.div`
-  box-sizing: border-box;
-  margin: auto;
-  max-width: ${SETTINGS_CONTENT_MAX_WIDTH}px;
-  padding: 0 ${themeCssVariables.spacing[8]};
-  width: 100%;
-`;
-
 const StyledDetailPanelWrapper = styled.div<{
   detailPanelWidth: number;
   isOpen: boolean;
@@ -257,13 +242,11 @@ const StyledDetailPanelWrapper = styled.div<{
 export const LogConsole = () => {
   const { t } = useLingui();
   const store = useStore();
-  const theme = useTheme();
   const shouldReduceMotion = useReducedMotion();
 
   const isLogConsoleAllowed = useIsLogConsoleAllowed();
   const isLogConsoleEnabled = useAtomStateValue(isLogConsoleEnabledState);
   const { setIsLogConsoleEnabled } = useSetIsLogConsoleEnabled();
-  const currentWorkspace = useAtomStateValue(currentWorkspaceState);
   const isClickHouseConfigured = useAtomStateValue(isClickHouseConfiguredState);
 
   const [logConsoleDisplayMode, setLogConsoleDisplayMode] = useAtomState(
@@ -387,18 +370,7 @@ export const LogConsole = () => {
   const panelHeight =
     !isExiting && displayedLayout.isFullScreen ? '100%' : spacerHeight;
 
-  const hasAuditLogsEntitlement = checkIfBillingEntitlementIsEnabledOnWorkspace(
-    BillingEntitlementKey.AUDIT_LOGS,
-    currentWorkspace,
-  );
-
-  const isSourceLocked = (source: LogConsoleSource) =>
-    source.requiresAuditLogs && !hasAuditLogsEntitlement;
-
-  const sources = [
-    ...LOG_CONSOLE_SOURCES.filter((source) => !isSourceLocked(source)),
-    ...LOG_CONSOLE_SOURCES.filter(isSourceLocked),
-  ];
+  const sources = LOG_CONSOLE_SOURCES;
 
   const activeSource =
     sources.find(
@@ -409,13 +381,6 @@ export const LogConsole = () => {
     id: source.id,
     title: t(source.label),
     Icon: source.Icon,
-    pill: isSourceLocked(source) ? (
-      <IconLock
-        size={theme.icon.size.sm}
-        stroke={theme.icon.stroke.sm}
-        color={theme.font.color.tertiary}
-      />
-    ) : undefined,
   }));
 
   const openLogConsole = () => {
@@ -567,18 +532,6 @@ export const LogConsole = () => {
         <SettingsEmptyPlaceholder>
           {t`Logs require ClickHouse to be configured. Please contact your administrator.`}
         </SettingsEmptyPlaceholder>
-      );
-    }
-
-    if (isSourceLocked(activeSource)) {
-      return (
-        <StyledUpgradeCardContainer>
-          <SettingsEnterpriseFeatureGateCard
-            title={t`Upgrade to access audit logs`}
-            description={t`Record changes and app logs are available on your current plan. Other log types require an Organization subscription.`}
-            buttonTitle={t`Upgrade`}
-          />
-        </StyledUpgradeCardContainer>
       );
     }
 

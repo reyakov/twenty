@@ -15,8 +15,6 @@ import {
   IdentityProviderType,
   OidcResponseType,
 } from 'src/engine/core-modules/sso/workspace-sso-identity-provider.entity';
-import { BillingEntitlementKey } from 'src/engine/core-modules/billing/enums/billing-entitlement-key.enum';
-import { BillingService } from 'src/engine/core-modules/billing/services/billing.service';
 import { ExceptionHandlerService } from 'src/engine/core-modules/exception-handler/exception-handler.service';
 import { SecureHttpClientService } from 'src/engine/core-modules/secure-http-client/secure-http-client.service';
 import {
@@ -33,8 +31,6 @@ import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twent
 
 @Injectable()
 export class SsoService {
-  private readonly featureLookUpKey = BillingEntitlementKey.SSO;
-
   // openid-client resolves this hook on the Issuer class, issuer and client instances, so all three get it.
   // It deep-merges the result with its own per-request options, so only the agent is returned.
   private readonly oidcHttpOptions = (url: URL) => ({
@@ -45,25 +41,10 @@ export class SsoService {
     @InjectRepository(WorkspaceSsoIdentityProviderEntity)
     private readonly workspaceSsoIdentityProviderRepository: Repository<WorkspaceSsoIdentityProviderEntity>,
     private readonly twentyConfigService: TwentyConfigService,
-    private readonly billingService: BillingService,
     private readonly exceptionHandlerService: ExceptionHandlerService,
     private readonly secureHttpClientService: SecureHttpClientService,
   ) {
     Issuer[custom.http_options] = this.oidcHttpOptions;
-  }
-
-  private async isSsoEnabled(workspaceId: string) {
-    const isSsoBillingEnabled = await this.billingService.hasEntitlement(
-      workspaceId,
-      this.featureLookUpKey,
-    );
-
-    if (!isSsoBillingEnabled) {
-      throw new SsoException(
-        `No entitlement found for this workspace`,
-        SsoExceptionCode.SSO_DISABLE,
-      );
-    }
   }
 
   async discoverOidcIssuer(issuerUrl: string) {
@@ -89,8 +70,6 @@ export class SsoService {
     workspaceId: string,
   ) {
     try {
-      await this.isSsoEnabled(workspaceId);
-
       const issuer = await this.discoverOidcIssuer(data.issuer);
 
       const identityProvider =
@@ -131,8 +110,6 @@ export class SsoService {
     >,
     workspaceId: string,
   ) {
-    await this.isSsoEnabled(workspaceId);
-
     const identityProvider = {
       id: data.id,
       name: data.name,

@@ -26,7 +26,6 @@ describe('buildCustomQuota', () => {
     expect(
       buildCustomQuota({
         usageLimit: buildUsageLimit(),
-        isEnforced: true,
         consumption: {
           consumedValue: 250_000,
           remainingValue: 750_000,
@@ -42,7 +41,6 @@ describe('buildCustomQuota', () => {
         consumedValue: 250_000,
         remainingValue: 750_000,
         periodEnd: MONTH_PERIOD.periodEnd,
-        isEnforced: true,
       }),
     );
   });
@@ -50,14 +48,12 @@ describe('buildCustomQuota', () => {
   it('leaves consumption and period empty when the counter was not read', () => {
     const item = buildCustomQuota({
       usageLimit: buildUsageLimit(),
-      isEnforced: false,
       consumption: undefined,
       spenderLabel: null,
     });
 
     expect(item).toEqual(
       expect.objectContaining({
-        isEnforced: false,
         consumedValue: null,
         remainingValue: null,
         periodStart: null,
@@ -73,7 +69,6 @@ describe('buildCustomQuota', () => {
           spenderType: 'userWorkspace',
           spenderId: 'user-1',
         }),
-        isEnforced: true,
         consumption: undefined,
         spenderLabel: 'Tim Apple',
       }),

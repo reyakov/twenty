@@ -8,8 +8,5 @@ export class UsageQuotaDefinitionsDTO {
   definitions: UsageQuotaDefinitionDTO[];
 
   @Field(() => Boolean)
-  isIntraWorkspaceLimitEntitled: boolean;
-
-  @Field(() => Boolean)
   hasAllowancePeriod: boolean;
 }

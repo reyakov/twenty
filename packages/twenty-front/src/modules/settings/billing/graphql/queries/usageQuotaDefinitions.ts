@@ -17,7 +17,6 @@ export const USAGE_QUOTA_DEFINITIONS = gql`
           periodUnit
         }
       }
-      isIntraWorkspaceLimitEntitled
       hasAllowancePeriod
     }
   }

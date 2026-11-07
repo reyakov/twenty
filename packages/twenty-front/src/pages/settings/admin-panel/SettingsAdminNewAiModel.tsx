@@ -2,7 +2,6 @@ import { ADD_MODEL_TO_PROVIDER } from '@/settings/admin-panel/ai/graphql/mutatio
 import { GET_ADMIN_AI_MODELS } from '@/settings/admin-panel/ai/graphql/queries/getAdminAiModels';
 import { GET_AI_PROVIDERS } from '@/settings/admin-panel/ai/graphql/queries/getAiProviders';
 import { GET_MODELS_DEV_SUGGESTIONS } from '@/settings/admin-panel/ai/graphql/queries/getModelsDevSuggestions';
-import { useCustomAiProviderAccess } from '@/settings/admin-panel/ai/hooks/useCustomAiProviderAccess';
 import { type GetAiProvidersResult } from '@/settings/admin-panel/ai/types/GetAiProvidersResult';
 import { useApolloAdminClient } from '@/settings/admin-panel/apollo/hooks/useApolloAdminClient';
 import { SaveAndCancelButtons } from '@/settings/components/SaveAndCancelButtons/SaveAndCancelButtons';
@@ -16,15 +15,14 @@ import { t } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath, isDefined } from 'twenty-shared/utils';
-import { InlineBanner, useToast } from 'twenty-ui/components/feedback';
+import { useToast } from 'twenty-ui/components/feedback';
 import { Section } from 'twenty-ui/components/layout';
 import { IconPlus } from 'twenty-ui/icon';
 import { Checkbox, Switch } from 'twenty-ui/primitives/input';
 import { themeCssVariables } from 'twenty-ui/theme';
-import { OrganizationAdornment } from '@/settings/enterprise/components/OrganizationAdornment';
 
 const StyledComboInputContainer = styled.div`
   display: flex;
@@ -96,11 +94,6 @@ export const SettingsAdminNewAiModel = () => {
   const { enqueueToast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCustomModelId, setIsCustomModelId] = useState(false);
-  const {
-    hasAccess: hasCustomAiProviderAccess,
-    gateDescription: customAiProviderGateDescription,
-    tooltipContent: customAiProviderTooltipContent,
-  } = useCustomAiProviderAccess();
 
   const { data: providersData } = useQuery<GetAiProvidersResult>(
     GET_AI_PROVIDERS,
@@ -336,33 +329,12 @@ export const SettingsAdminNewAiModel = () => {
         actionButton={
           <SaveAndCancelButtons
             onCancel={() => navigate(providerDetailPath)}
-            isSaveDisabled={isSubmitting || !hasCustomAiProviderAccess}
+            isSaveDisabled={isSubmitting}
             onSave={handleSave}
           />
         }
       >
         <SettingsPageContainer>
-          {!hasCustomAiProviderAccess && (
-            <InlineBanner
-              layout="compact"
-              status="error"
-              action={
-                <InlineBanner.Action
-                  href={getSettingsPath(SettingsPath.AdminPanelOrganization)}
-                  nativeButton={false}
-                  role="link"
-                  render={
-                    <Link
-                      to={getSettingsPath(SettingsPath.AdminPanelOrganization)}
-                    />
-                  }
-                >{t`Activate`}</InlineBanner.Action>
-              }
-            >
-              {customAiProviderGateDescription}
-            </InlineBanner>
-          )}
-
           <Section.Root>
             <Section.Header
               title={t`Model ID`}
@@ -370,11 +342,6 @@ export const SettingsAdminNewAiModel = () => {
                 showModelSelect
                   ? t`Select a known model or add a custom one`
                   : t`The model identifier used by the provider API`
-              }
-              actions={
-                <OrganizationAdornment
-                  tooltipContent={customAiProviderTooltipContent}
-                />
               }
             />
             {showModelSelect ? (

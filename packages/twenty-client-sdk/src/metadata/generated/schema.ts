@@ -3826,7 +3826,6 @@ export interface UsageQuotaDefinition {
 export interface UsageQuotaDefinitions {
     definitions: UsageQuotaDefinition[]
     hasAllowancePeriod: Scalars['Boolean']
-    isIntraWorkspaceLimitEntitled: Scalars['Boolean']
     __typename: 'UsageQuotaDefinitions'
 }
 
@@ -3848,7 +3847,6 @@ export interface UsageQuotaScopeConsumption {
 export interface UsageQuotaWithConsumption {
     consumedValue?: Scalars['BigInt']
     id: Scalars['UUID']
-    isEnforced: Scalars['Boolean']
     limitValue: Scalars['BigInt']
     operationType: UsageOperationType
     periodEnd?: Scalars['DateTime']
@@ -8872,7 +8870,6 @@ export interface UsageQuotaDefinitionGenqlSelection{
 export interface UsageQuotaDefinitionsGenqlSelection{
     definitions?: UsageQuotaDefinitionGenqlSelection
     hasAllowancePeriod?: boolean | number
-    isIntraWorkspaceLimitEntitled?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -8899,7 +8896,6 @@ export interface UsageQuotaScopeInput {operationType: UsageOperationType,periodU
 export interface UsageQuotaWithConsumptionGenqlSelection{
     consumedValue?: boolean | number
     id?: boolean | number
-    isEnforced?: boolean | number
     limitValue?: boolean | number
     operationType?: boolean | number
     periodEnd?: boolean | number

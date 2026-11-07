@@ -1,7 +1,5 @@
 import { Test } from '@nestjs/testing';
 
-import { EnterprisePlanService } from 'src/engine/core-modules/enterprise/services/enterprise-plan.service';
-import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twenty-config.service';
 import { createEmptyFlatEntityMaps } from 'src/engine/metadata-modules/flat-entity/constant/create-empty-flat-entity-maps.constant';
 import { WorkspaceDataSourceService } from 'src/engine/twenty-orm/datasource/workspace-data-source.service';
 import { getWorkspaceContext } from 'src/engine/twenty-orm/storage/orm-workspace-context.storage';
@@ -17,14 +15,6 @@ describe('workspace context sharing enforcement', () => {
         providers: [
           WorkspaceOrmManager,
           { provide: WorkspaceDataSourceService, useValue: {} },
-          {
-            provide: EnterprisePlanService,
-            useValue: { isValid: jest.fn().mockReturnValue(false) },
-          },
-          {
-            provide: TwentyConfigService,
-            useValue: { get: jest.fn().mockReturnValue(false) },
-          },
           {
             provide: WorkspaceCacheService,
             useValue: {
@@ -49,7 +39,7 @@ describe('workspace context sharing enforcement', () => {
       expect(context.authContext).toBe(authContext);
       expect(
         module.get(WorkspaceCacheService).getOrRecompute,
-      ).toHaveBeenCalledTimes(1);
+      ).toHaveBeenCalledTimes(lite ? 1 : 2);
       await module.close();
     },
   );

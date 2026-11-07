@@ -14,7 +14,6 @@ import { TwentyConfigService } from 'src/engine/core-modules/twenty-config/twent
 import { WARM_AND_CONSUME_COUNTERS_SCRIPT } from 'src/engine/core-modules/usage-limit/constants/warm-and-consume-counters-script.constant';
 import { UsageLimitException } from 'src/engine/core-modules/usage-limit/exceptions/usage-limit.exception';
 import { UsageLimitDefaultValueService } from 'src/engine/core-modules/usage-limit/services/usage-limit-default-value.service';
-import { UsageLimitEntitlementService } from 'src/engine/core-modules/usage-limit/services/usage-limit-entitlement.service';
 import { UsagePeriodService } from 'src/engine/core-modules/usage-limit/services/usage-period.service';
 import { type AllowanceUsage } from 'src/engine/core-modules/usage-limit/types/allowance-usage.type';
 import { type WorkspaceAllowanceQuotaCounter } from 'src/engine/core-modules/usage-limit/types/workspace-allowance-quota-counter.type';
@@ -32,7 +31,6 @@ import { type QuotaLimitDefault } from 'src/engine/core-modules/usage-limit/type
 import { type UserAllowanceQuotaCounter } from 'src/engine/core-modules/usage-limit/types/user-allowance-quota-counter.type';
 import { buildWorkspaceAllowanceCounterKey } from 'src/engine/core-modules/usage-limit/utils/build-workspace-allowance-counter-key.util';
 import { buildConsumeScriptArguments } from 'src/engine/core-modules/usage-limit/utils/build-consume-script-arguments.util';
-import { buildIntraWorkspaceLimitCounterKeys } from 'src/engine/core-modules/usage-limit/utils/build-intra-workspace-limit-counter-keys.util';
 import { buildLimitQuotaCounter } from 'src/engine/core-modules/usage-limit/utils/build-limit-quota-counter.util';
 import { buildPeriodGroupKey } from 'src/engine/core-modules/usage-limit/utils/build-period-group-key.util';
 import { buildQuotaCounters } from 'src/engine/core-modules/usage-limit/utils/build-quota-counters.util';
@@ -92,7 +90,6 @@ export class UsageLimitQuotaService {
     private readonly usageAnalyticsService: UsageAnalyticsService,
     private readonly usageRecorderService: UsageRecorderService,
     private readonly billingCreditAllowanceService: BillingCreditAllowanceService,
-    private readonly usageLimitEntitlementService: UsageLimitEntitlementService,
     private readonly usageLimitDefaultValueService: UsageLimitDefaultValueService,
     private readonly metricsService: MetricsService,
     private readonly twentyConfigService: TwentyConfigService,
@@ -143,25 +140,6 @@ export class UsageLimitQuotaService {
       workspaceId,
       events: [event],
     });
-  }
-
-  async dropIntraWorkspaceLimitCounters(workspaceId: string): Promise<void> {
-    const limits = await this.findAllLimits(workspaceId);
-
-    const keys = buildIntraWorkspaceLimitCounterKeys({
-      workspaceId,
-      limits,
-      periodByUnit: await this.usagePeriodService.findCurrentPeriodsByUnit({
-        workspaceId,
-        periodUnits: limits.map((limit) => limit.periodUnit),
-      }),
-    });
-
-    if (keys.length === 0) {
-      return;
-    }
-
-    await this.cacheStorage.mdel(keys);
   }
 
   async dropLimitCounter({
@@ -336,17 +314,6 @@ export class UsageLimitQuotaService {
           },
         ] as const;
       }),
-    );
-  }
-
-  private async findAllLimits(workspaceId: string): Promise<FlatUsageLimit[]> {
-    const { usageLimits } = await this.workspaceCacheService.getOrRecompute(
-      workspaceId,
-      ['usageLimits'],
-    );
-
-    return Object.values(usageLimits.byResourceType).flatMap(
-      (limits) => limits ?? [],
     );
   }
 
@@ -856,10 +823,7 @@ export class UsageLimitQuotaService {
       resourceType,
     }).filter(isQuotaLimit);
 
-    return this.usageLimitEntitlementService.findEnforceableLimits({
-      workspaceId,
-      limits: quotaLimits,
-    });
+    return quotaLimits;
   }
 
   private async readCountersAdmittingOnFailure({

@@ -11,7 +11,6 @@ export enum UsageLimitExceptionCode {
   QUOTA_EXHAUSTED = 'QUOTA_EXHAUSTED',
   STOCK_EXHAUSTED = 'STOCK_EXHAUSTED',
   LIMIT_INVALID = 'LIMIT_INVALID',
-  LIMIT_NOT_ENTITLED = 'LIMIT_NOT_ENTITLED',
   LIMIT_FORBIDDEN = 'LIMIT_FORBIDDEN',
   LIMIT_CONFLICT = 'LIMIT_CONFLICT',
 }
@@ -28,8 +27,6 @@ const getUsageLimitExceptionUserFriendlyMessage = (
       return msg`This workspace has reached its storage limit.`;
     case UsageLimitExceptionCode.LIMIT_INVALID:
       return msg`This limit cannot be saved.`;
-    case UsageLimitExceptionCode.LIMIT_NOT_ENTITLED:
-      return msg`Limits scoped below the workspace require the Organization plan.`;
     case UsageLimitExceptionCode.LIMIT_FORBIDDEN:
       return msg`Only an operator can replace an instance default.`;
     case UsageLimitExceptionCode.LIMIT_CONFLICT:

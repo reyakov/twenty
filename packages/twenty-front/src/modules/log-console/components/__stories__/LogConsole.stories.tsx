@@ -770,22 +770,6 @@ export const FullScreen: Story = {
   },
 };
 
-export const LockedTab: Story = {
-  beforeEach: () => {
-    jotaiStore.set(currentWorkspaceState.atom, {
-      ...WORKSPACE_WITH_LOGS_CONSOLE,
-      billingEntitlements: [],
-    });
-    jotaiStore.set(logConsoleDisplayModeState.atom, 'open');
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Security' }));
-    await canvas.findByText('Upgrade to access audit logs');
-  },
-};
-
 export const ClickHouseMissing: Story = {
   beforeEach: () => {
     jotaiStore.set(logConsoleDisplayModeState.atom, 'open');

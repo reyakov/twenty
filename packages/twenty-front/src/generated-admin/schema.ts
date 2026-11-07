@@ -517,13 +517,6 @@ export type CreditUsedItem = {
   resource?: Maybe<UsageResourceType>;
 };
 
-export type CustomAiProviderAccessDto = {
-  __typename?: 'CustomAiProviderAccessDTO';
-  hasAccess: Scalars['Boolean']['output'];
-  seatCount: Scalars['Int']['output'];
-  seatThreshold: Scalars['Int']['output'];
-};
-
 export type DeleteJobsResponse = {
   __typename?: 'DeleteJobsResponse';
   deletedCount: Scalars['Int']['output'];
@@ -862,7 +855,6 @@ export type Query = {
   getAdminWorkspaceChatThreads: Array<AdminWorkspaceChatThread>;
   getAiProviders: Scalars['JSON']['output'];
   getConfigVariablesGrouped: ConfigVariables;
-  getCustomAiProviderAccess: CustomAiProviderAccessDto;
   getDatabaseConfigVariable: ConfigVariable;
   getIndicatorHealthStatus: AdminPanelHealthServiceData;
   getInstanceAndAllWorkspacesUpgradeStatus: InstanceAndAllWorkspacesUpgradeStatus;

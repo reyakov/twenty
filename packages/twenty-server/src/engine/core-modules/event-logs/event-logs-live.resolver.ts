@@ -118,7 +118,7 @@ export class EventLogsLiveResolver {
     @AuthApplication({ allowUndefined: true })
     callingApplication: FlatApplication | undefined,
   ) {
-    await this.eventLogsService.validateAccess(workspace.id, table);
+    await this.eventLogsService.validateAccess(table);
 
     fieldFilters?.forEach((fieldFilter) =>
       validateEventLogFieldFilterOrThrow({ fieldFilter, table }),

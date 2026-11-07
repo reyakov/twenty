@@ -1,6 +1,4 @@
 import { useInstalledApplications } from '@/applications/hooks/useInstalledApplications';
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
-import { OrganizationAdornment } from '@/settings/enterprise/components/OrganizationAdornment';
 import { SettingsRolesTableHeader } from '@/settings/roles/components/SettingsRolesTableHeader';
 import { SettingsRolesTableRow } from '@/settings/roles/components/SettingsRolesTableRow';
 import { useSettingsAllRoles } from '@/settings/roles/hooks/useSettingsAllRoles';
@@ -11,8 +9,6 @@ import { DropdownRoot } from '@/ui/layout/dropdown/components/DropdownRoot';
 import { Table } from '@/ui/layout/table/components/Table';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableFooter } from '@/ui/layout/table/components/TableFooter';
-import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
-import { checkIfBillingEntitlementIsEnabledOnWorkspace } from '@/workspace/utils/checkIfBillingEntitlementIsEnabledOnWorkspace';
 import { styled } from '@linaria/react';
 import { useState } from 'react';
 import { SettingsPath } from 'twenty-shared/types';
@@ -30,7 +26,6 @@ import {
 } from 'twenty-ui/icon';
 import { Button } from 'twenty-ui/primitives/input';
 import { themeCssVariables } from 'twenty-ui/theme';
-import { BillingEntitlementKey } from '~/generated-metadata/graphql';
 import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 import { sortByAscString } from '~/utils/array/sortByAscString';
 import { useLingui } from '@lingui/react/macro';
@@ -67,13 +62,6 @@ export const SettingsRolesList = () => {
 
   const settingsAllRoles = useSettingsAllRoles();
   const installedApplications = useInstalledApplications();
-  const currentWorkspace = useAtomStateValue(currentWorkspaceState);
-
-  const hasCustomRolesEntitlement =
-    checkIfBillingEntitlementIsEnabledOnWorkspace(
-      BillingEntitlementKey.CUSTOM_ROLES,
-      currentWorkspace,
-    );
 
   const installedApplicationByDefaultRoleId = new Map(
     installedApplications
@@ -179,17 +167,11 @@ export const SettingsRolesList = () => {
       </Table>
       <TableFooter>
         <StyledCreateRoleContainer>
-          {!hasCustomRolesEntitlement && (
-            <OrganizationAdornment
-              tooltipContent={t`Upgrade to Organization to create custom roles`}
-            />
-          )}
           <Button
             startIcon={<IconPlus />}
             size="sm"
             onClick={() => navigateSettings(SettingsPath.RoleCreate)}
             variant="outline"
-            disabled={!hasCustomRolesEntitlement}
           >{t`Create Role`}</Button>
         </StyledCreateRoleContainer>
       </TableFooter>

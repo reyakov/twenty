@@ -12,7 +12,6 @@ export const USAGE_QUOTAS_WITH_CONSUMPTION = gql`
       periodUnit
       unit
       limitValue
-      isEnforced
       consumedValue
       remainingValue
       periodStart

@@ -191,9 +191,6 @@ export const SettingsBillingLimitForm = ({
           />
           <SettingsBillingLimitSpenderSelect
             allowedSpenderTypes={options.spenderTypes}
-            isIntraWorkspaceLimitEntitled={
-              definitions.isIntraWorkspaceLimitEntitled
-            }
             spenderType={values.spenderType}
             spenderId={values.spenderId}
             isDisabled={!hasResource}

@@ -11,9 +11,7 @@ import {
   MessageSuppressionDTO,
   MessageSuppressionListDTO,
 } from 'src/engine/core-modules/emailing-domain/dtos/message-suppression.dto';
-import { EmailGroupAccessGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/email-group-access-graphql-api-exception.filter';
 import { EmailingDomainGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/emailing-domain-graphql-api-exception.filter';
-import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
@@ -39,7 +37,6 @@ const MESSAGE_SUPPRESSION_WRITE_ACCESS_POLICY: AccessPolicy = {
 };
 
 @UseFilters(
-  EmailGroupAccessGraphqlApiExceptionFilter,
   EmailingDomainGraphqlApiExceptionFilter,
   AuthGraphqlApiExceptionFilter,
 )
@@ -48,7 +45,6 @@ const MESSAGE_SUPPRESSION_WRITE_ACCESS_POLICY: AccessPolicy = {
 export class MessageSuppressionResolver {
   constructor(
     private readonly messageSuppressionService: MessageSuppressionService,
-    private readonly emailGroupAccessService: EmailGroupAccessService,
   ) {}
 
   @Query(() => MessageSuppressionListDTO)
@@ -57,8 +53,6 @@ export class MessageSuppressionResolver {
     @Args('input') input: FindMessageSuppressionsInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
   ): Promise<MessageSuppressionListDTO> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     return this.messageSuppressionService.findSuppressions({
       workspaceId: currentWorkspace.id,
       reason: input.reason,
@@ -75,8 +69,6 @@ export class MessageSuppressionResolver {
     @Args('input') input: CreateMessageSuppressionInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
   ): Promise<MessageSuppressionDTO> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     return this.messageSuppressionService.suppressManually({
       workspaceId: currentWorkspace.id,
       emailAddress: input.emailAddress,
@@ -90,8 +82,6 @@ export class MessageSuppressionResolver {
     @Args('id', { type: () => UUIDScalarType }) suppressionId: string,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
   ): Promise<boolean> {
-    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
-
     await this.messageSuppressionService.removeSuppression({
       workspaceId: currentWorkspace.id,
       suppressionId,

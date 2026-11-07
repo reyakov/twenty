@@ -19,12 +19,10 @@ type CustomQuotaScope = Pick<
 
 export const buildCustomQuota = ({
   usageLimit,
-  isEnforced,
   consumption,
   spenderLabel,
 }: {
   usageLimit: CustomQuotaScope;
-  isEnforced: boolean;
   consumption: LimitConsumption | undefined;
   spenderLabel: string | null;
 }): UsageQuotaWithConsumption => ({
@@ -37,7 +35,6 @@ export const buildCustomQuota = ({
   periodUnit: usageLimit.periodUnit,
   unit: usageLimit.unit,
   limitValue: usageLimit.limitValue,
-  isEnforced,
   consumedValue: consumption?.consumedValue ?? null,
   remainingValue: consumption?.remainingValue ?? null,
   periodStart: isDefined(consumption) ? consumption.periodStart : null,

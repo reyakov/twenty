@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import { isDefined } from 'twenty-shared/utils';
 
 import { type AiChatUsageDTO } from 'src/engine/metadata-modules/ai/ai-chat/dtos/ai-chat-usage.dto';
-import { UsageLimitEntitlementService } from 'src/engine/core-modules/usage-limit/services/usage-limit-entitlement.service';
 import { UsageLimitQuotaService } from 'src/engine/core-modules/usage-limit/services/usage-limit-quota.service';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { findAiChatCreditLimits } from 'src/engine/metadata-modules/ai/ai-chat/utils/find-ai-chat-credit-limits.util';
@@ -13,7 +12,6 @@ import { selectAiChatUsage } from 'src/engine/metadata-modules/ai/ai-chat/utils/
 export class AiChatUsageService {
   constructor(
     private readonly workspaceCacheService: WorkspaceCacheService,
-    private readonly usageLimitEntitlementService: UsageLimitEntitlementService,
     private readonly usageLimitQuotaService: UsageLimitQuotaService,
   ) {}
 
@@ -29,13 +27,12 @@ export class AiChatUsageService {
       ['usageLimits'],
     );
 
-    const enforcedLimits =
-      await this.usageLimitEntitlementService.findEnforceableLimits({
-        workspaceId,
-        limits: findAiChatCreditLimits({ usageLimits, userWorkspaceId }),
-      });
+    const aiChatCreditLimits = findAiChatCreditLimits({
+      usageLimits,
+      userWorkspaceId,
+    });
 
-    if (enforcedLimits.length === 0) {
+    if (aiChatCreditLimits.length === 0) {
       const workspaceAllowanceUsage =
         await this.usageLimitQuotaService.getWorkspaceAllowanceUsage(
           workspaceId,
@@ -49,9 +46,12 @@ export class AiChatUsageService {
     const consumptionById =
       await this.usageLimitQuotaService.readLimitConsumptions({
         workspaceId,
-        limits: enforcedLimits,
+        limits: aiChatCreditLimits,
       });
 
-    return selectAiChatUsage({ limits: enforcedLimits, consumptionById });
+    return selectAiChatUsage({
+      limits: aiChatCreditLimits,
+      consumptionById,
+    });
   }
 }

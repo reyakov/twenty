@@ -19,7 +19,6 @@ import { UsageQuotaAdmissionService } from 'src/engine/core-modules/usage-limit/
 import { UsageQuotaConsumptionService } from 'src/engine/core-modules/usage-limit/services/usage-quota-consumption.service';
 import { UsageQuotaDefinitionService } from 'src/engine/core-modules/usage-limit/services/usage-quota-definition.service';
 import { UsageLimitDefaultValueService } from 'src/engine/core-modules/usage-limit/services/usage-limit-default-value.service';
-import { UsageLimitEntitlementService } from 'src/engine/core-modules/usage-limit/services/usage-limit-entitlement.service';
 import { UsageLimitSpeedService } from 'src/engine/core-modules/usage-limit/services/usage-limit-speed.service';
 import { UsageLimitStockService } from 'src/engine/core-modules/usage-limit/services/usage-limit-stock.service';
 import { WorkspaceRecordStockService } from 'src/engine/core-modules/usage-limit/services/workspace-record-stock.service';
@@ -54,7 +53,6 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
     UsageLimitSpeedService,
     UsageLimitStockService,
     WorkspaceRecordStockService,
-    UsageLimitEntitlementService,
     UsageLimitDefaultValueService,
     UsageLimitsCacheService,
     UsagePeriodService,
@@ -73,7 +71,6 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
     provideWorkspaceScopedRepository(LogicFunctionEntity),
   ],
   exports: [
-    UsageLimitEntitlementService,
     UsageLimitService,
     UsageLimitQuotaService,
     UsageQuotaAdmissionService,

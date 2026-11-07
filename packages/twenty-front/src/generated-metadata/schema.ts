@@ -8212,7 +8212,6 @@ export type UsageQuotaDefinitions = {
   __typename?: 'UsageQuotaDefinitions';
   definitions: Array<UsageQuotaDefinition>;
   hasAllowancePeriod: Scalars['Boolean']['output'];
-  isIntraWorkspaceLimitEntitled: Scalars['Boolean']['output'];
 };
 
 export type UsageQuotaOperatorOnlyScope = {
@@ -8243,7 +8242,6 @@ export type UsageQuotaWithConsumption = {
   __typename?: 'UsageQuotaWithConsumption';
   consumedValue?: Maybe<Scalars['BigInt']['output']>;
   id: Scalars['UUID']['output'];
-  isEnforced: Scalars['Boolean']['output'];
   limitValue: Scalars['BigInt']['output'];
   operationType: UsageOperationType;
   periodEnd?: Maybe<Scalars['DateTime']['output']>;
