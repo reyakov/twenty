@@ -232,7 +232,7 @@ ROLLBACK_SCRIPT="$BACKUP_DIR/rollback.sh"
     echo "docker run --rm -v \"$FILES_VOLUME\":/data -v \"$BACKUP_DIR\":/backup alpine sh -c 'rm -rf /data/* && tar xzf /backup/files.tgz -C /data'"
   fi
   echo "cp \"$BACKUP_DIR/env.before\" \"$ENV_FILE\""
-  echo "docker compose --project-directory \"$COMPOSE_DIR\" -f \"$COMPOSE_FILE\" --env-file \"$ENV_FILE\" up -d"
+  echo "docker compose --project-directory \"$COMPOSE_DIR\" -f \"$COMPOSE_FILE\" --env-file \"$ENV_FILE\" up -d --wait --wait-timeout 900"
 } > "$ROLLBACK_SCRIPT"
 chmod +x "$ROLLBACK_SCRIPT"
 
