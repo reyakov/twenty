@@ -306,7 +306,7 @@ if compose logs server | grep -qE 'Upgrade completed with errors|Upgrade failed'
   die "Upgrade reported errors. Rollback: bash $ROLLBACK_SCRIPT"
 fi
 
-UPGRADE_STATUS="$(compose exec -T server yarn command:prod upgrade:status 2>&1 || true)"
+UPGRADE_STATUS="$(compose exec -T server timeout 120 yarn command:prod upgrade:status 2>&1 || true)"
 printf '%s\n' "$UPGRADE_STATUS" > "$BACKUP_DIR/upgrade-status.txt"
 printf '%s\n' "$UPGRADE_STATUS"
 
