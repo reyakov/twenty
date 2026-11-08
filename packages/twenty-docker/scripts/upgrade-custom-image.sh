@@ -163,6 +163,10 @@ fi
 SERVER_CONTAINER="$(compose ps -q server || true)"
 [[ -n "$SERVER_CONTAINER" ]] || die "The server container is not running; start the current stack first"
 
+CURRENT_SERVER_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$SERVER_CONTAINER")"
+CURRENT_SERVER_REPOSITORY="${CURRENT_SERVER_IMAGE%:*}"
+[[ "$CURRENT_SERVER_REPOSITORY" == "$COMPOSE_IMAGE" ]] || die "Server image is $CURRENT_SERVER_IMAGE but Compose is expected to use $COMPOSE_IMAGE; pass --compose-image with the correct repository"
+
 DISABLE_MIGRATIONS="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$SERVER_CONTAINER" | awk -F= '/^DISABLE_DB_MIGRATIONS=/{print $2; exit}')"
 if [[ "$DISABLE_MIGRATIONS" == "true" ]]; then
   die "DISABLE_DB_MIGRATIONS=true for the server; unset it or set it to false before upgrading"
@@ -210,9 +214,6 @@ esac
 [[ "$IMAGE_ARCH" == "$DAEMON_ARCH" ]] || die "Image architecture is $IMAGE_ARCH but Docker is $DAEMON_ARCH"
 
 docker tag "$IMAGE" "$COMPOSE_REF"
-if ! compose config | grep -Fq "image: $COMPOSE_REF"; then
-  die "Compose does not resolve to $COMPOSE_REF; pass --compose-image with the repository used by the compose file"
-fi
 
 cp "$ENV_FILE" "$BACKUP_DIR/env.before"
 compose images > "$BACKUP_DIR/compose-images.before.txt"
