@@ -1,0 +1,2 @@
+export const CREATOR_RESTRICTED_FIELD_PERMISSIONS_UPGRADE_COMMAND_NAME =
+  '2.56.0_CreatorRestrictedFieldPermissionsFastInstanceCommand_1794045540598';

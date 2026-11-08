@@ -12,6 +12,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+import { CREATOR_RESTRICTED_FIELD_PERMISSIONS_UPGRADE_COMMAND_NAME } from 'src/database/commands/upgrade-version-command/2-56/constants/creator-restricted-field-permissions-upgrade-command-name.constant';
+import { WasIntroducedInUpgrade } from 'src/engine/core-modules/upgrade/decorators/was-introduced-in-upgrade.decorator';
 import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { RoleEntity } from 'src/engine/metadata-modules/role/role.entity';
@@ -75,6 +77,10 @@ export class FieldPermissionEntity extends SyncableEntity {
   @Column({ nullable: true, type: 'boolean' })
   canUpdateFieldValue?: boolean | null;
 
+  @WasIntroducedInUpgrade({
+    upgradeCommandName:
+      CREATOR_RESTRICTED_FIELD_PERMISSIONS_UPGRADE_COMMAND_NAME,
+  })
   @Column({ nullable: true, type: 'boolean' })
   restrictFieldValueToCreator?: boolean | null;
 
